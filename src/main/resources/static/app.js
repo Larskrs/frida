@@ -6,7 +6,7 @@ const log = (user, text) => {
     document.getElementById("log").appendChild(el);
 };
 
-const url = "ws://" + location.host + "/chat"
+const url = "ws://" + "localhost:80" + "/chat"
 const ws = new WebSocket(url);
 
 ws.onopen = () => log("SYSTEM", "Connected");
@@ -38,16 +38,24 @@ function keyDown(e) {
 
 
 class ChatMessage extends HTMLElement {
-    connectedCallback() {
-        const user = this.getAttribute("user");
-        const text = this.getAttribute("text");
+  connectedCallback() {
+    const user = this.getAttribute("user") || "";
+    const text = this.getAttribute("text") || "";
 
-        this.innerHTML = `
-      <div class=${user === "SYSTEM" ? "system" : "msg"}>
-        <strong>${user}</strong> ${text}
-      </div>
-    `;
-    }
+    const wrapper = document.createElement("div");
+    wrapper.className = user === "SYSTEM" ? "system" : "msg";
+
+    const strong = document.createElement("strong");
+    strong.textContent = user;
+
+    const textNode = document.createTextNode(" " + text);
+
+    wrapper.appendChild(strong);
+    wrapper.appendChild(textNode);
+
+    // Clear previous content
+    this.replaceChildren(wrapper);
+  }
 }
 
 customElements.define("chat-message", ChatMessage);
