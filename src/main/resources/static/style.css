@@ -1,0 +1,20 @@
+html {
+    font-family: Helvetica, "Helvetica Neue", serif;
+}
+.msg {
+    padding: 10px 16px;
+    background: #f3f3f3;
+    border-radius: 8px;
+    width: fit-content;
+}
+.system {
+    padding: 10px 16px;
+    background: #f1dec3;
+    border-radius: 8px;
+    width: fit-content;
+}
+.container {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+}
