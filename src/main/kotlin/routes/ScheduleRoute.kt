@@ -9,6 +9,7 @@ import io.ktor.server.websocket.webSocket
 fun Route.scheduleRoutes() {
 
     staticResources("schedule", "schedule")
+    staticResources("chat", "chat")
 
     webSocket("/schedule/ws") {
         handleSocket(this)

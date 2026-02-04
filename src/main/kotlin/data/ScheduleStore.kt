@@ -1,5 +1,6 @@
 package com.example.data
 
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 
 object ScheduleStore {
@@ -16,33 +17,43 @@ object ScheduleStore {
         return Schedule(
             columns = listOf(
                 Column(
-                    id = "1",
+                    id = "A1",
                     title = "Vignett",
+                    duration = 50000,
                     cells = mapOf(
-                        "lengde" to CellValue.Number(30.0),
                         "kamera" to CellValue.Text("Lars"),
                     )
                 ),
                 Column(
-                    id = "2",
+                    id = "A2",
                     title = "Manual",
+                    duration = 240000,
                     cells = mapOf(
-                        "duration" to CellValue.Number(30.0),
                         "kamera" to CellValue.Text("Profil - Lars"),
                         "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
                     )
                 ),
                 Column(
-                    id = "3",
+                    id = "A3",
                     title = "Manual",
+                    duration = 150000,
                     cells = mapOf(
-                        "duration" to CellValue.Number(30.0),
+                        "host" to CellValue.Text("Lars"),
+                        "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
+                    )
+                ),
+                Column(
+                    id = "A4",
+                    title = "Manual",
+                    duration = 50000,
+                    cells = mapOf(
                         "host" to CellValue.Text("Lars"),
                         "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
                     )
                 )
             ),
-            "1"
+            "1",
+            programStart = Instant.now().toEpochMilli(),
         )
     }
 

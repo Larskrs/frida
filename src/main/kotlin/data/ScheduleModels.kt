@@ -1,19 +1,39 @@
 package com.example.data
 
 import kotlinx.serialization.Serializable
+import java.time.Duration
+import java.time.Instant
 
 @Serializable
 data class Schedule(
     val columns: List<Column>,
-    var activeColumnId: String? = null
+    var activeColumnId: String? = null,
+    var programStart: Long,
 )
 
 @Serializable
 data class Column(
     val id: String,
     val title: String,
+    val duration: Long,
     val cells: Map<String, CellValue>
 )
+fun Column.absoluteStart(schedule: Schedule): Instant {
+    val start = Instant.ofEpochMilli(schedule.programStart)
+
+    var sum = 0L
+    for (col in schedule.columns) {
+        if (col.id == this.id) break
+        sum += col.duration
+    }
+
+    return start.plusMillis(sum)
+}
+
+fun Column.timeUntilStart(schedule: Schedule): Duration {
+    val now = Instant.now()
+    return Duration.between(now, absoluteStart(schedule))
+}
 
 @Serializable
 sealed class CellValue {
