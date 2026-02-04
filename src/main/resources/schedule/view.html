@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Schedule</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: white;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        td, th {
+            border: 1px solid #444;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .active {
+            background: white;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Schedule</h1>
+<h2>Current Active: <span id="active-column">None</span></h2>
+
+<table id="scheduleTable"></table>
+
+<script src="/schedule/view.js"></script>
+</body>
+</html>
