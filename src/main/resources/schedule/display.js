@@ -1,17 +1,23 @@
 import {
-    formatCell,
-    startSecondTicker,
-    cleanTxt,
-    formatMillisTime,
-    parseTimeToTodayMillis,
-    formatClock,
-    getColumnTiming,
-    getColumnAbsoluteStart,
-    getDurationMs,
-    getCumulativeOffsetMs
+  formatCell,
+  cleanTxt,
+  formatMillisTime,
+  parseTimeToTodayMillis,
+  formatClock,
+  getColumnTiming,
+  getColumnAbsoluteStart,
+  getRemainingMs,
+  formatMs,
+  getElapsedMs,
+  getDurationMs,
+  getCumulativeOffsetMs, startTicker
 } from "./utils.js?v=1";
 
-const ws = new WebSocket("ws://" + location.host + "/schedule/ws");
+let host = location.host;
+if (location.toString().includes("RELOAD_ON_SAVE")) {
+  host = "localhost"
+}
+const ws = new WebSocket("ws://" + host + "/schedule/ws");
 
 let schedule = null;
 let activeColumnId = null;
@@ -52,16 +58,9 @@ ws.onmessage = e => {
 
 /* -------------------- AUTO RENDER -------------------- */
 
-setInterval(() => {
-  if (schedule) render();
-}, 250);
+startTicker(250, () => render())
 
 /* -------------------- TIMING -------------------- */
-
-function getElapsedMs(col) {
-  if (!col.activatedAt) return 0;
-  return Date.now() - col.activatedAt;
-}
 
 function getProgressPercent(col) {
   const duration = getDurationMs(col);
@@ -72,20 +71,6 @@ function getProgressPercent(col) {
 }
 function getProgress(duration, elapsed) {
   return (elapsed / duration) * 100; // allow >100 when late
-}
-
-function getRemainingMs(col) {
-  if (!col.activatedAt) return null;
-
-  const elapsed = getElapsedMs(col);
-  return getDurationMs(col) - elapsed;
-}
-
-function formatMs(ms) {
-  const total = Math.floor(Math.abs(ms) / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 /* -------------------- EDIT -------------------- */
@@ -109,8 +94,11 @@ function render() {
   const titleEl = document.getElementById("title");
   const timingEl = document.getElementById("timing");
   const progressEl = document.getElementById("progress");
+  const delayEl = document.getElementById("delay")
 
   const col = schedule.columns.find(c => c.id === activeColumnId);
+
+  const t = getColumnTiming(col, schedule)
 
   if (!col) {
     idEl.textContent = "—";
@@ -121,10 +109,14 @@ function render() {
     return;
   }
     console.log(col.cells)
-  idEl.textContent = col.cells["Ip1"]?.value ?? col.id ?? "—";
+  idEl.textContent = col.cells["ip1"]?.value ?? col.cells["ip2"]?.value ?? col.cells["type"]?.value ?? col.id ?? "—";
   titleEl.textContent = cleanTxt(col.title) ?? "";
 
   const remaining = getRemainingMs(col);
+
+  /* --------- Delay ---------- */
+
+  delayEl.textContent = formatClock(t.remaining)
 
   /* -------- Progress -------- */
 

@@ -1,102 +1,159 @@
 package com.example.data
 
+import com.example.nextFullSecond
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.time.Instant
+import kotlin.system.measureTimeMillis
 
 object ScheduleCsvLoader {
 
     private val timeRegex = Regex("""^\d{2}:\d{2}:\d{2}$""")
 
-
     fun loadFromResources(fileName: String = "schedule.csv"): Schedule {
-        val stream = this::class.java.classLoader
-            .getResourceAsStream(fileName)
-            ?: error("CSV not found: $fileName")
+        println("[CSV] ===== LOADING SCHEDULE =====")
+        val totalTime = measureTimeMillis {
 
-        val reader = BufferedReader(InputStreamReader(stream))
+            println("[CSV] File requested: $fileName")
 
-        val lines = reader.readLines().filter { it.isNotBlank() }
-        if (lines.size < 2) error("CSV empty")
+            val stream = this::class.java.classLoader
+                .getResourceAsStream(fileName)
+                ?: error("[CSV] ERROR: CSV not found: $fileName")
 
-        val headers = lines.first().split(",").map { it.trim() }
-        val rows = lines.drop(1)
+            val reader = BufferedReader(InputStreamReader(stream))
 
-        val columns = rows.mapIndexed { index, row ->
-            val values = row.split(",")
-            val map = headers.zip(values).toMap()
+            val lines = reader.readLines().filter { it.isNotBlank() }
 
-            Column(
-                id = map["ID"] ?: "R$index",
-                title = map["Title"] ?: "Untitled",
-                duration = parseDuration(map["Duration"]),
-                cells = buildCells(map)
+            println("[CSV] Total lines read: ${lines.size}")
+
+            if (lines.size < 2) error("[CSV] ERROR: CSV empty or missing rows")
+
+            // Normalize headers
+            val rawHeaders = lines.first().split(",")
+            val headers = rawHeaders.map { it.trim().lowercase() }
+
+            println("[CSV] Headers detected: $headers")
+
+            val rows = lines.drop(1)
+            println("[CSV] Row count: ${rows.size}")
+
+            val start = nextFullSecond()
+            println("[CSV] Program start snapped to: $start")
+
+            val columns = rows.mapIndexed { index, row ->
+
+                println("[CSV] ---- ROW $index ----")
+                println("[CSV] Raw row: $row")
+
+                val rawValues = row.split(",")
+
+                // Pad missing values
+                val values = rawValues + List(headers.size - rawValues.size) { "" }
+
+                val map = headers.zip(values).toMap()
+
+                println("[CSV] Parsed map: $map")
+
+                val col = Column(
+                    id = map["id"] ?: "R$index",
+                    title = map["title"] ?: "Untitled",
+                    duration = parseDuration(map["duration"]),
+                    cells = buildCells(map),
+                    activatedAt = if (index == 0) start else 0
+                )
+
+                println("[CSV] Column built: $col")
+
+                col
+            }
+
+            val schedule = Schedule(
+                columns = columns,
+                activeColumnId = columns.firstOrNull()?.id,
+                programStart = start
             )
+
+            println("[CSV] Schedule ready with ${columns.size} columns")
+            println("[CSV] Active column: ${schedule.activeColumnId}")
+
+            return schedule
         }
 
-        return Schedule(
-            columns = columns,
-            activeColumnId = columns.firstOrNull()?.id,
-            programStart = Instant.now().toEpochMilli()
-        )
+        println("[CSV] LOAD COMPLETE in ${totalTime}ms")
+        println("[CSV] =========================")
     }
 
     private fun buildCells(map: Map<String, String>): Map<String, CellValue> {
-        val ignored = setOf("ID", "Title", "Duration")
+        val ignored = setOf("id", "title", "duration")
 
-        return map
+        val cells = map
             .filterKeys { it !in ignored }
-            .mapValues { (_, v) -> detectType(v) }
+            .mapValues { (k, v) ->
+                val detected = detectType(v)
+                println("[CSV] Cell [$k] -> $detected")
+                detected
+            }
+
+        return cells
     }
 
     private fun detectType(value: String): CellValue {
         val trimmed = value.trim()
 
         return when {
-            trimmed.isBlank() ->
-                CellValue.Text("")
+            trimmed.isBlank() -> CellValue.Text("")
 
-            // TRUE / FALSE
             trimmed.equals("true", true) ||
                     trimmed.equals("false", true) ->
                 CellValue.Bool(trimmed.toBoolean())
 
-            // HH:MM:SS TIME
             timeRegex.matches(trimmed) ->
                 CellValue.Time(parseTimeToMillis(trimmed))
 
-            // NUMBER
             trimmed.toDoubleOrNull() != null ->
                 CellValue.Number(trimmed.toDouble())
 
-            // LIST
             trimmed.contains(";") ->
                 CellValue.StringList(trimmed.split(";").map { it.trim() })
 
-            // DEFAULT
             else ->
                 CellValue.Text(trimmed)
         }
     }
 
-
     private fun parseDuration(text: String?): Long {
-        if (text == null) return 0
+        if (text.isNullOrBlank()) {
+            println("[CSV] Duration empty -> 0")
+            return 0
+        }
 
-        // supports "00:01:30"
         val parts = text.split(":").mapNotNull { it.toLongOrNull() }
-        if (parts.size != 3) return 0
+
+        if (parts.size != 3) {
+            println("[CSV] Invalid duration format: $text")
+            return 0
+        }
 
         val (h, m, s) = parts
-        return (h * 3600 + m * 60 + s) * 1000
+        val ms = (h * 3600 + m * 60 + s) * 1000
+
+        println("[CSV] Duration parsed [$text] -> $ms ms")
+
+        return ms
     }
 }
 
-
-
-
 private fun parseTimeToMillis(text: String): Long {
-    val parts = text.split(":").map { it.toLong() }
+    val parts = text.split(":").mapNotNull { it.toLongOrNull() }
+
+    if (parts.size != 3) {
+        println("[CSV] Invalid time format: $text")
+        return 0
+    }
+
     val (h, m, s) = parts
-    return (h * 3600 + m * 60 + s) * 1000
+    val ms = (h * 3600 + m * 60 + s) * 1000
+
+    println("[CSV] Time parsed [$text] -> $ms ms")
+
+    return ms
 }

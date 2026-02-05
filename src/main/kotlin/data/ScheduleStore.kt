@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.nextFullSecond
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 
@@ -73,7 +74,7 @@ object ScheduleStore {
                 )
             ),
             "1",
-            programStart = Instant.now().toEpochMilli(),
+            programStart = nextFullSecond(),
         )
     }
 

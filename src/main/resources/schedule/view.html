@@ -1,53 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
     <title>Schedule</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            background: #111;
-            color: white;
-        }
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        td, th {
-            border: 1px solid #444;
-            padding: 8px;
-            text-align: left;
-            color: var(--status-color);
-        }
-
-        .active {
-            outline: 2px solid red;
-            background: rgba(255,0,0,0.125);
-            color: white;
-        }
-
-        .upcoming { --status-color: #ffd54a; } /* yellow */
-        .late { --status-color: #ff5252; }     /* red */
-        .ontime { --status-color: #6cff8f; }   /* green */
-    </style>
+    <link rel="stylesheet" href="./fonts.css">
+    <link rel="stylesheet" href="./view.css">
 </head>
+
 <body>
 
-<h1>Schedule</h1>
-<h2>Current Active: <span id="active-column">None</span></h2>
+<div class="container">
 
-<div style="margin-bottom: 16px; display:flex; gap:8px; align-items:center;">
-    <label for="program-start-input">Program Start:</label>
-    <input  id="program-start-input" type="time" step="1" value="00:00:00" />
-    <button id="program-start-now">Now</button>
-    <button id="program-start-set">Set Start</button>
+    <div class="panel">
+        <h1>Schedule</h1>
+        <h2>Current Active: <span id="active-column">None</span></h2>
+    </div>
+
+    <div class="panel">
+        <label for="program-start-input">Program Start</label>
+        <div class="controls">
+            <input id="program-start-input" type="time" step="1" value="00:00:00" />
+            <button id="program-start-set">Set Start</button>
+            <button id="program-start-now">Start Now</button>
+        </div>
+    </div>
+
+    <div class="panel table-wrapper">
+        <table id="scheduleTable"></table>
+    </div>
+
 </div>
-
-<h3 id="program-start-label">Program Start: -</h3>
-
-
-<table id="scheduleTable"></table>
 
 <script type="module" src="./view.js?v=1"></script>
 </body>

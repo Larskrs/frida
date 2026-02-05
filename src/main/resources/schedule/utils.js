@@ -24,11 +24,11 @@ export function formatCell(val) {
     return JSON.stringify(val.value);
 }
 
-export function startSecondTicker(callback) {
-  let lastSecond = Math.floor(Date.now() / 1000);
+export function startTicker(delay, callback) {
+  let lastSecond = Math.floor(Date.now() / delay);
 
   function loop() {
-    const currentSecond = Math.floor(Date.now() / 1000);
+    const currentSecond = Math.floor(Date.now() / delay);
 
     if (currentSecond !== lastSecond) {
       lastSecond = currentSecond;
@@ -77,8 +77,22 @@ export function formatMs(ms) {
     return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+export function millisSince(at, from) {
+    return at-from
+}
+
 export function formatClock(ms) {
-    return new Date(ms).toLocaleTimeString();
+    const date = new Date(ms);
+
+    // Get time components
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    // Milliseconds should be padded to 3 digits
+    const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+
+    // Format the time string
+    return `${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
 
 export function getCumulativeOffsetMs(targetCol, schedule) {
@@ -104,42 +118,45 @@ export function getDurationMs(col) {
 }
 
 export function getColumnTiming(col, schedule) {
-  const abs = getColumnAbsoluteStart(col, schedule);
-  const duration = getDurationMs(col);
 
-  if (!abs) return { status: "UNKNOWN", delay: 0, abs: null };
+    const abs = getColumnAbsoluteStart(col, schedule);
+    const duration = getDurationMs(col);
 
-  const now = Date.now();
-  const activatedAt = col.activatedAt ?? null;
+    if (!abs) return { status: "UNKNOWN", delay: 0, abs: null };
 
-  const elapsed = activatedAt ? now - activatedAt : 0;
-  const remaining = activatedAt ? duration - elapsed : duration;
+    const tolerence = 3000;
 
-  // ---- DELAY ----
-  let delay = 0;
-  if (activatedAt) {
-    delay = activatedAt - abs;
-  } else {
-    // not started yet → how far past planned start we are
-    delay = now - abs;
-  }
+    const now = Date.now();
+    const activatedAt = col.activatedAt ?? null;
 
-  let status = "UPCOMING";
+    const elapsed = activatedAt ? now - activatedAt : 0;
+    const remaining = activatedAt ? duration - elapsed : duration;
 
-  if (activatedAt) {
-    if (delay < 0) status = "EARLY";
-    else if (delay === 0) status = "ON TIME";
-    else status = "LATE";
-  } else {
-    if (now > abs + duration) status = "MISSED";
-    else if (now > abs) status = "OVERDUE";
-  }
+    // ---- DELAY ----
+    let delay = 0;
+    if (activatedAt) {
+      delay = activatedAt - abs;
+    } else {
+      // not started yet → how far past planned start we are
+      delay = now - abs;
+    }
 
-  return {
-    status,
-    abs,
-    remaining,
-    duration,
-    delay
-  };
+    let status = "UPCOMING";
+
+    if (activatedAt) {
+      if (delay < -tolerence) status = "EARLY";
+      else if (Math.abs(delay) <= tolerence) status = "ON TIME";
+      else status = "LATE";
+    } else {
+      if (now > abs + duration) status = "MISSED";
+      else if (now > abs) status = "OVERDUE";
+    }
+
+    return {
+      status,
+      abs,
+      remaining,
+      duration,
+      delay
+    };
 }

@@ -1,6 +1,5 @@
 import {
     formatCell,
-    startSecondTicker,
     cleanTxt,
     formatMillisTime,
     parseTimeToTodayMillis,
@@ -8,10 +7,14 @@ import {
     getColumnTiming,
     getColumnAbsoluteStart,
     getDurationMs,
-    getCumulativeOffsetMs
+    getCumulativeOffsetMs, millisSince, startTicker
 } from "./utils.js?v=1";
 
-const ws = new WebSocket("ws://" + location.host + "/schedule/ws");
+let host = location.host;
+if (location.toString().includes("RELOAD_ON_SAVE")) {
+    host = "localhost"
+}
+const ws = new WebSocket("ws://" + host + "/schedule/ws");
 
 let schedule = null;
 let activeColumnId = null;
@@ -36,6 +39,7 @@ ws.onmessage = e => {
             console.log("Attempting to load schedule");
             schedule = event.schedule;
             activeColumnId = schedule?.activeColumnId ?? null;
+            console.log(schedule)
             render();
             break;
 
@@ -149,7 +153,7 @@ function render() {
         return;
     }
     const t = getColumnTiming(activeItem, schedule)
-    activeLabel.textContent = `${activeItem.id} - ${activeItem.title} - ${formatMillisTime(t.remaining)}`
+    activeLabel.textContent = `${activeItem.id} - ${cleanTxt(activeItem.title)} - ${formatMillisTime(t.remaining)}`
 
     // Program start label (optional)
     const startLabel = document.getElementById("program-start");
@@ -159,7 +163,7 @@ function render() {
     }
 
     // Columns/fields
-    const keys = new Set(["id", "title", "status", "countdown", "delay"]);
+    const keys = new Set(["id", "title", "status", "duration", "delay", "activated"]);
     schedule.columns.forEach(col =>
         Object.keys(col.cells || {}).forEach(k => keys.add(cleanTxt(k)))
     );
@@ -206,16 +210,17 @@ function render() {
                 if (t.status === "LATE") td.classList.add("late");
                 if (t.status === "OVERDUE") td.classList.add("late");
 
-            } else if (key === "countdown") {
+            } else if (key === "duration") {
                 const t = getColumnTiming(col, schedule)
                 const activeIndex = schedule.columns.findIndex(c => c.id === activeColumnId);
                 const idx = schedule.columns.findIndex(c => c.id === col.id);
                 if (activeColumnId !== col.id) {
                     td.textContent = formatMillisTime(t.duration)
-                }
-                else if (t.remaining > 0) {
+                } else if (t.remaining > 0) {
                     td.textContent = formatMillisTime(t.remaining)
                 }
+            } else if (key === "activated") {
+                td.textContent = millisSince(col.activatedAt, schedule.programStart)
             } else if (key === "delay") {
                   const t = getColumnTiming(col, schedule);
 
@@ -224,7 +229,8 @@ function render() {
                   } else if (t.delay === 0) {
                       td.textContent = "00:00";
                   } else {
-                      td.textContent = t.delay > 0 ? `+${formatMillisTime(Math.abs(t.delay))}` : "";
+                      const sign = t.delay > 0 ? "+" : "-"
+                      td.textContent = `${sign}${formatMillisTime(Math.abs(t.delay))}`;
                   }
 
                   td.classList.remove("early", "late");
@@ -266,5 +272,5 @@ function move(newIndex) {
 }
 
 // Re-render clock every second
-startSecondTicker(() => render())
+startTicker(1000, () => render())
 

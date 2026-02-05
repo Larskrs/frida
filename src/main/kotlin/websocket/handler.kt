@@ -5,6 +5,7 @@ import io.ktor.websocket.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import com.example.data.ScheduleStore
+import com.example.nextFullSecond
 import java.time.Instant
 
 val json = Json {
@@ -46,29 +47,30 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                 is ScheduleEvent.ProgramStartChanged -> {
                     val current = ScheduleStore.get()
-                    val now = Instant.now().toEpochMilli()
+
+                    val start = nextFullSecond()
 
                     val firstId = current.columns.firstOrNull()?.id
 
                     val newColumns = current.columns.mapIndexed { index, col ->
                         if (index == 0) {
-                            col.copy(activatedAt = event.programStart)
+                            col.copy(activatedAt = start)
                         } else {
                             col.copy(activatedAt = 0)
                         }
                     }
 
                     val updated = current.copy(
-                        programStart = event.programStart,
+                        programStart = start,
                         activeColumnId = firstId,
                         columns = newColumns
                     )
 
                     ScheduleStore.set(updated)
 
-                    // send full state if you want everyone to instantly align
                     broadcast(ScheduleEvent.Load(updated))
                 }
+
 
                 is ScheduleEvent.ActiveColumnChanged -> {
                     event.activatedAt = Instant.now().toEpochMilli()

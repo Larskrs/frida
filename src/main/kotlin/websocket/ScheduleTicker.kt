@@ -3,6 +3,7 @@ package com.example.websocket
 import com.example.data.ScheduleStore
 import kotlinx.coroutines.*
 import java.time.Instant
+import kotlin.math.max
 
 object ScheduleTicker {
 
@@ -13,10 +14,29 @@ object ScheduleTicker {
 
         job = scope.launch {
             while (isActive) {
+
+                val schedule = ScheduleStore.get()
+                val programStart = schedule.programStart
+
+                // ---- ALIGN DELAY ----
+                val delayMs = if (programStart != null) {
+                    val now = Instant.now().toEpochMilli()
+                    val startMs = programStart
+                    val offset = (now - startMs) % 1000
+                    max(1, 1000 - offset) // avoid 0
+                } else {
+                    1000L // fallback if no programStart
+                }
+
                 tick()
-                delay(250) // 4x per second is smooth enough
+                delay(delayMs)
             }
         }
+    }
+
+    fun stop() {
+        job?.cancel()
+        job = null
     }
 
     private suspend fun tick() {
@@ -30,6 +50,8 @@ object ScheduleTicker {
         val activatedAt = activeCol.activatedAt ?: return
         val duration = activeCol.duration ?: return
 
+        // if duration is less
+
         val now = Instant.now().toEpochMilli()
         val elapsed = now - activatedAt
 
@@ -38,7 +60,8 @@ object ScheduleTicker {
             if (nextIndex >= schedule.columns.size) return
 
             val nextCol = schedule.columns[nextIndex]
-            val newTime = Instant.now().toEpochMilli()
+
+            val newTime = alignedNow(schedule.programStart)
 
             val newColumns = schedule.columns.map { col ->
                 if (col.id == nextCol.id)
@@ -62,4 +85,11 @@ object ScheduleTicker {
             )
         }
     }
+}
+
+private fun alignedNow(programStart: Long): Long {
+    val now = Instant.now().toEpochMilli()
+    val sinceStart = now - programStart
+    val seconds = sinceStart / 1000
+    return programStart + (seconds * 1000)
 }
