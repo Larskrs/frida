@@ -52,7 +52,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                     val newColumns = current.columns.mapIndexed { index, col ->
                         if (index == 0) {
-                            col.copy(activatedAt = now)
+                            col.copy(activatedAt = event.programStart)
                         } else {
                             col.copy(activatedAt = 0)
                         }

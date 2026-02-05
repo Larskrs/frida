@@ -11,7 +11,7 @@ import {
     getCumulativeOffsetMs
 } from "./utils.js?v=1";
 
-const ws = new WebSocket("ws://" + "localhost" + "/schedule/ws");
+const ws = new WebSocket("ws://" + location.host + "/schedule/ws");
 
 let schedule = null;
 let activeColumnId = null;
