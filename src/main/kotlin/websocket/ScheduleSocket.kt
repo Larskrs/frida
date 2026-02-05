@@ -17,7 +17,11 @@ sealed class ScheduleEvent {
     ) : ScheduleEvent()
 
     @Serializable
+    data class ProgramStartChanged(val programStart: Long) : ScheduleEvent()
+
+    @Serializable
     data class ActiveColumnChanged(
-        val columnId: String
+        val columnId: String,
+        var activatedAt: Long =0,
     ) : ScheduleEvent()
 }

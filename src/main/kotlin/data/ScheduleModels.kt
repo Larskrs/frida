@@ -1,5 +1,6 @@
 package com.example.data
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Duration
 import java.time.Instant
@@ -16,7 +17,9 @@ data class Column(
     val id: String,
     val title: String,
     val duration: Long,
-    val cells: Map<String, CellValue>
+    val cells: Map<String, CellValue>,
+
+    var activatedAt: Long = 0,
 )
 fun Column.absoluteStart(schedule: Schedule): Instant {
     val start = Instant.ofEpochMilli(schedule.programStart)
@@ -42,4 +45,7 @@ sealed class CellValue {
     @Serializable data class Bool(val value: Boolean) : CellValue()
     @Serializable data class StringList(val value: List<String>) : CellValue()
     @Serializable data class EnumVal(val value: String) : CellValue()
+    @Serializable
+    @SerialName("Time")
+    data class Time(val millis: Long) : CellValue()
 }

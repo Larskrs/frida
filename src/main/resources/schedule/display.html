@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Active Column</title>
+    <style>
+        body {
+          font-family: system-ui, sans-serif;
+          background: transparent;
+          color: white;
+          margin: 0;
+          height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .strip {
+          height: 100px;
+          max-height: 100px;
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          background: #000;
+          border: 1px solid #333;
+          border-bottom: none;
+          padding: 10px 24px 14px 16px;
+          width: 100vw;
+          position: relative;
+        }
+
+        /* ID Square */
+        .id-box {
+          width: 90px;
+          height: 90px;
+          min-width: 90px;
+          background: #eee;
+          color: black;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 32px;
+          font-weight: 700;
+          letter-spacing: 1px;
+        }
+
+        /* Title */
+        .title {
+          flex: 1;
+          font-size: 34px;
+          font-weight: 500;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+
+        /* Timing */
+        .timing {
+          font-size: 32px;
+          font-weight: 600;
+          min-width: 200px;
+          text-align: right;
+          color: var(--status-color);
+          letter-spacing: 4px;
+        }
+
+        .progress {
+          position: absolute;
+          height: 4px;
+          background: var(--status-color);
+          opacity: 0.75;
+          left: 0;
+          bottom: 0;
+          right: 0;
+          transition: width 250ms linear;
+        }
+
+        /* Status Colors */
+        .upcoming { --status-color: #ffd54a; } /* yellow */
+        .late { --status-color: #ff5252; }     /* red */
+        .ontime { --status-color: #6cff8f; }   /* green */
+    </style>
+</head>
+<body>
+<div class="strip">
+    <div id="colId" class="id-box">—</div>
+    <div id="title" class="title">No Active Column</div>
+    <div id="timing" class="timing">--:--</div>
+    <div id="progress" class="progress"></div>
+</div>
+
+
+
+<script type="module" src="./display.js?v=1"></script>
+</body>
+</html>

@@ -14,25 +14,45 @@ object ScheduleStore {
     }
 
     fun loadInitial(): Schedule {
+        return try {
+            ScheduleCsvLoader.loadFromResources("schedule.csv")
+        } catch (e: Exception) {
+            println("CSV load failed, using fallback: ${e.message}")
+            fallbackSchedule()
+        }
+    }
+
+
+    fun fallbackSchedule(): Schedule {
         return Schedule(
             columns = listOf(
                 Column(
                     id = "A1",
                     title = "Vignett",
-                    duration = 50000,
+                    duration = 5000,
                     cells = mapOf(
                         "kamera" to CellValue.Text("Lars"),
                     )
                 ),
                 Column(
                     id = "A2",
-                    title = "Manual",
-                    duration = 240000,
+                    title = "Feature - EM i Skiskyting",
+                    duration = 15000,
                     cells = mapOf(
                         "kamera" to CellValue.Text("Profil - Lars"),
                         "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
                     )
                 ),
+                Column(
+                    id = "A22",
+                    title = "Feature - Mangel på barnehageplass",
+                    duration = 15000,
+                    cells = mapOf(
+                        "kamera" to CellValue.Text("Profil - Lars"),
+                        "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
+                    )
+                ),
+
                 Column(
                     id = "A3",
                     title = "Manual",

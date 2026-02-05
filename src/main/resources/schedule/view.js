@@ -1,4 +1,17 @@
-const ws = new WebSocket("ws://" + location.host + "/schedule/ws");
+import {
+    formatCell,
+    startSecondTicker,
+    cleanTxt,
+    formatMillisTime,
+    parseTimeToTodayMillis,
+    formatClock,
+    getColumnTiming,
+    getColumnAbsoluteStart,
+    getDurationMs,
+    getCumulativeOffsetMs
+} from "./utils.js?v=1";
+
+const ws = new WebSocket("ws://" + "localhost" + "/schedule/ws");
 
 let schedule = null;
 let activeColumnId = null;
@@ -13,6 +26,12 @@ ws.onmessage = e => {
     const event = JSON.parse(e.data);
 
     switch (event.type.split(".").pop()) {
+        case "ProgramStartChanged":
+            if (schedule) {
+                schedule.programStart = event.programStart;
+            }
+            render();
+            break;
         case "Load":
             console.log("Attempting to load schedule");
             schedule = event.schedule;
@@ -22,6 +41,14 @@ ws.onmessage = e => {
 
         case "ActiveColumnChanged":
             activeColumnId = event.columnId;
+
+            if (schedule?.columns) {
+              const col = schedule.columns.find(c => c.id === event.columnId);
+              if (col) {
+                 col.activatedAt = event.activatedAt;
+               }
+            }
+
             render();
             break;
 
@@ -32,65 +59,40 @@ ws.onmessage = e => {
     }
 };
 
+
+const startInput = document.getElementById("program-start-input");
+const startNowBtn = document.getElementById("program-start-now");
+const startSetBtn = document.getElementById("program-start-set");
+
+startNowBtn?.addEventListener("click", () => {
+    const now = Date.now();
+    sendProgramStart(now);
+
+    // also update input visually
+    const d = new Date(now);
+    startInput.value =
+        d.toTimeString().split(" ")[0]; // HH:MM:SS
+});
+
+startSetBtn?.addEventListener("click", () => {
+    if (!startInput.value) return;
+    const ms = parseTimeToTodayMillis(startInput.value);
+    sendProgramStart(ms);
+});
+
+function sendProgramStart(ms) {
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.ProgramStartChanged",
+        programStart: ms
+    }));
+}
+
+
 /* -------------------- TIMING -------------------- */
 
-// Re-render clock every second
-setInterval(() => {
-    if (schedule) render();
-}, 1000);
-
 // Duration is stored in cells["duration"].value in SECONDS
-function getDurationMs(col) {
-    return Number(col.duration ?? 0);
-}
-
 
 // Sum all durations ABOVE this column
-function getCumulativeOffsetMs(targetCol) {
-    if (!schedule) return 0;
-
-    let sum = 0;
-    for (const col of schedule.columns) {
-        if (col.id === targetCol.id) break;
-        sum += getDurationMs(col);
-    }
-    return sum;
-}
-
-// Absolute start = programStart + cumulative offset
-function getColumnAbsoluteStart(col) {
-    if (!schedule?.programStart) return null;
-
-    const offset = getCumulativeOffsetMs(col);
-    return schedule.programStart + offset;
-}
-
-function getColumnTiming(col) {
-    const abs = getColumnAbsoluteStart(col);
-    if (!abs) return { status: "UNKNOWN", diff: 0, abs: null };
-
-    const now = Date.now();
-    const diff = abs - now;
-
-    const tolerance = 5000; // 5 sec window
-
-    let status = "UPCOMING";
-    if (Math.abs(diff) <= tolerance) status = "ON TIME";
-    else if (diff < -tolerance) status = "LATE";
-
-    return { status, diff, abs };
-}
-
-function formatMs(ms) {
-    const total = Math.floor(Math.abs(ms) / 1000);
-    const m = Math.floor(total / 60);
-    const s = total % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function formatClock(ms) {
-    return new Date(ms).toLocaleTimeString();
-}
 
 /* -------------------- EDITS -------------------- */
 
@@ -142,9 +144,12 @@ function render() {
     // Active label
     const activeLabel = document.getElementById("active-column");
     const activeItem = schedule.columns.find(c => c.id === activeColumnId);
-    activeLabel.textContent = activeItem
-        ? `${activeItem.id} - ${activeItem.title}`
-        : "None";
+    if (!activeItem) {
+        activeLabel.textContent = "None"
+        return;
+    }
+    const t = getColumnTiming(activeItem, schedule)
+    activeLabel.textContent = `${activeItem.id} - ${activeItem.title} - ${formatMillisTime(t.remaining)}`
 
     // Program start label (optional)
     const startLabel = document.getElementById("program-start");
@@ -154,9 +159,9 @@ function render() {
     }
 
     // Columns/fields
-    const keys = new Set(["id", "title", "start", "countdown", "status"]);
+    const keys = new Set(["id", "title", "status", "countdown", "delay"]);
     schedule.columns.forEach(col =>
-        Object.keys(col.cells || {}).forEach(k => keys.add(k))
+        Object.keys(col.cells || {}).forEach(k => keys.add(cleanTxt(k)))
     );
 
     // Header
@@ -185,31 +190,47 @@ function render() {
                 td.textContent = col.id;
 
             } else if (key === "title") {
-                td.textContent = col.title;
+                td.textContent = cleanTxt(col.title);
 
             } else if (key === "start") {
-                const t = getColumnTiming(col);
+                const t = getColumnTiming(col, schedule);
                 td.textContent = t.abs ? formatClock(t.abs) : "-";
 
-            } else if (key === "countdown") {
-                const t = getColumnTiming(col);
-
-                if (!t.abs) {
-                    td.textContent = "-";
-                } else if (t.diff > 0) {
-                    td.textContent = "In " + formatMs(t.diff);
-                } else {
-                    td.textContent = formatMs(t.diff) + " ago";
-                }
-
             } else if (key === "status") {
-                const t = getColumnTiming(col);
+                const t = getColumnTiming(col, schedule);
                 td.textContent = t.status;
 
-                td.classList.remove("upcoming", "ontime", "late");
+                td.classList.remove("upcoming", "ontime", "late", "overdue");
                 if (t.status === "UPCOMING") td.classList.add("upcoming");
                 if (t.status === "ON TIME") td.classList.add("ontime");
                 if (t.status === "LATE") td.classList.add("late");
+                if (t.status === "OVERDUE") td.classList.add("late");
+
+            } else if (key === "countdown") {
+                const t = getColumnTiming(col, schedule)
+                const activeIndex = schedule.columns.findIndex(c => c.id === activeColumnId);
+                const idx = schedule.columns.findIndex(c => c.id === col.id);
+                if (activeColumnId !== col.id) {
+                    td.textContent = formatMillisTime(t.duration)
+                }
+                else if (t.remaining > 0) {
+                    td.textContent = formatMillisTime(t.remaining)
+                }
+            } else if (key === "delay") {
+                  const t = getColumnTiming(col, schedule);
+
+                  if (!t.abs) {
+                      td.textContent = "-";
+                  } else if (t.delay === 0) {
+                      td.textContent = "00:00";
+                  } else {
+                      td.textContent = t.delay > 0 ? `+${formatMillisTime(Math.abs(t.delay))}` : "";
+                  }
+
+                  td.classList.remove("early", "late");
+                  if (t.delay > 0) td.classList.add("late");
+                  if (t.delay < 0) td.classList.add("early");
+
 
             } else {
                 td.textContent = formatCell(col.cells?.[key]);
@@ -220,14 +241,6 @@ function render() {
 
         table.appendChild(row);
     });
-}
-
-/* -------------------- UTIL -------------------- */
-
-function formatCell(val) {
-    if (!val) return "";
-    if (val.value !== undefined) return val.value;
-    return JSON.stringify(val);
 }
 
 /* -------------------- HORIZONTAL NAV -------------------- */
@@ -251,3 +264,7 @@ function move(newIndex) {
         columnId: schedule.columns[newIndex].id
     }));
 }
+
+// Re-render clock every second
+startSecondTicker(() => render())
+
