@@ -90,33 +90,63 @@ function applyEdit(event) {
 function render() {
   if (!schedule || !schedule.columns) return;
 
-  const idEl = document.getElementById("colId");
   const titleEl = document.getElementById("title");
   const timingEl = document.getElementById("timing");
   const progressEl = document.getElementById("progress");
-  const delayEl = document.getElementById("delay")
+  const ipContainer = document.getElementById("ipContainer");
+  const tinyIdEl = document.getElementById("tinyId");
+  const notesEl = document.getElementById("notes");
 
   const col = schedule.columns.find(c => c.id === activeColumnId);
 
   const t = getColumnTiming(col, schedule)
 
   if (!col) {
-    idEl.textContent = "—";
+    tinyIdEl.textContent = "—";
     titleEl.textContent = "No Active Column";
     timingEl.textContent = "--:--";
     timingEl.className = "timing";
     if (progressEl) progressEl.style.width = "0%";
     return;
   }
-    console.log(col.cells)
-  idEl.textContent = col.cells["ip1"]?.value ?? col.cells["ip2"]?.value ?? col.cells["type"]?.value ?? col.id ?? "—";
   titleEl.textContent = cleanTxt(col.title) ?? "";
 
   const remaining = getRemainingMs(col);
 
-  /* --------- Delay ---------- */
+  const notes = col.cells["posisjon"]?.value;
+  notesEl.textContent = cleanTxt(notes)
 
-  delayEl.textContent = formatClock(t.remaining)
+
+  titleEl.textContent =
+      cleanTxt(col.title)
+
+  /* -------- ips -------- */
+
+  ipContainer.innerHTML = "";
+
+  const ip1 = col.cells["ip1"]?.value;
+  const ip2 = col.cells["ip2"]?.value;
+
+  console.log(col)
+
+  function createIpBox(txt) {
+    const box = document.createElement("div");
+    box.className = "ip-box " + txt.toLowerCase().replace(" ", "");
+    box.textContent = txt.toUpperCase();
+    return box;
+  }
+
+  if (ip1) ipContainer.appendChild(createIpBox(ip1));
+  if (ip2) ipContainer.appendChild(createIpBox(ip2));
+
+  if (!ip1 && !ip2) {
+    const box = createIpBox("—");
+    ipContainer.appendChild(box);
+  }
+
+  /* -------- Tiny Column ID -------- */
+
+  tinyIdEl.textContent = col.id ?? "—";
 
   /* -------- Progress -------- */
 

@@ -42,6 +42,7 @@ object ScheduleTicker {
     private suspend fun tick() {
         val schedule = ScheduleStore.get()
         val activeId = schedule.activeColumnId ?: return
+        if (schedule.programStart > Instant.now().toEpochMilli()) return
 
         val activeIndex = schedule.columns.indexOfFirst { it.id == activeId }
         if (activeIndex == -1) return

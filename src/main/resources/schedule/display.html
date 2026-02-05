@@ -28,19 +28,30 @@
           position: relative;
         }
 
-        /* ID Square */
-        .id-box {
-          width: 90px;
-          height: 90px;
-          min-width: 90px;
-          background: #eee;
-          color: black;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 32px;
-          font-weight: 700;
-          letter-spacing: 1px;
+        .ip-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ip-box {
+            width: 70px;
+            height: 70px;
+            min-width: 70px;
+            background: #eee;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .tiny-id {
+            font-size: 24px;
+            opacity: 0.6;
+            min-width: 30px;
         }
 
         /* Title */
@@ -62,13 +73,12 @@
           color: var(--status-color);
           letter-spacing: 4px;
         }
-        .delay {
-          font-size: 32px;
+        .notes {
+          font-size: 24px;
           font-weight: 600;
           min-width: 200px;
           text-align: right;
-          color: var(--status-color);
-          letter-spacing: 4px;
+          color: #ccc;
         }
 
         .progress {
@@ -86,13 +96,26 @@
         .upcoming { --status-color: #ffd54a; } /* yellow */
         .late { --status-color: #ff5252; }     /* red */
         .ontime { --status-color: #6cff8f; }   /* green */
+
+        .evs {
+            background: deeppink;
+            color: white;
+        }
+        .k1, .k2, .k3, .k4, .k5  {
+            background: #4c6fff;
+            color: white;
+        }
+        .live {
+            background: #4cff74;
+        }
     </style>
 </head>
 <body>
 <div class="strip">
-    <div id="colId" class="id-box">—</div>
+    <div id="ipContainer" class="ip-container"></div>
+    <div id="tinyId" class="tiny-id">—</div>
     <div id="title" class="title">No Active Column</div>
-    <div id="delay" class="delay">--:--</div>
+    <div id="notes" class="notes"></div>
     <div id="timing" class="timing">--:--</div>
     <div id="progress" class="progress"></div>
 </div>
