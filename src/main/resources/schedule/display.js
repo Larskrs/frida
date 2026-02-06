@@ -10,7 +10,7 @@ import {
   formatMs,
   getElapsedMs,
   getDurationMs,
-  getCumulativeOffsetMs, startTicker
+  getCumulativeOffsetMs, startTicker, createIpBox
 } from "./utils.js?v=1";
 
 let host = location.host;
@@ -85,31 +85,6 @@ function applyEdit(event) {
 
 /* -------------------- RENDER -------------------- */
 
-function createFallbackBox(label) {
-  const box = document.createElement("div");
-  box.className = "ip-box ip-fallback";
-
-  const p = document.createElement("p");
-  p.textContent = label || "—";
-
-  box.appendChild(p);
-  return box;
-}
-
-function safeImg(src, alt) {
-  const img = document.createElement("img");
-  img.src = src;
-  img.alt = alt;
-
-  img.onerror = () => {
-    const fallback = createFallbackBox(alt);
-    img.replaceWith(fallback);
-  };
-
-  return img;
-}
-
-
 function render() {
   if (!schedule || !schedule.columns) return;
 
@@ -155,49 +130,6 @@ function render() {
     "ip2",
     "variant",
   ];
-
-// Helper
-  function createIpBox(txtRaw) {
-    let txt = (txtRaw || "").trim();
-    const clean = cleanTxt(txt);
-
-    if (!clean) return createFallbackBox("—");
-
-    const upper = txt.toUpperCase();
-    const box = document.createElement("div");
-    box.className = "ip-box";
-
-    // -------- SPLIT DETECTION --------
-    const splitMatch = upper.split(/[\/\s]+/).filter(Boolean);
-
-    // Case 1: Explicit SPLIT
-    if (upper === "SPLIT") {
-      box.appendChild(safeImg("./img/SPLIT.png", "SPLIT"));
-      return box;
-    }
-
-    // Case 2: Split Mode
-    if (splitMatch.length === 2) {
-      const [left, right] = splitMatch;
-      box.classList.add("split");
-
-      const leftImg = safeImg(`./img/SPLIT_L_${left}.png`, left);
-      leftImg.className = "split-left";
-
-      const rightImg = safeImg(`./img/SPLIT_R_${right}.png`, right);
-      rightImg.className = "split-right";
-
-      box.appendChild(leftImg);
-      box.appendChild(rightImg);
-      return box;
-    }
-
-    // -------- NORMAL MODE --------
-    box.appendChild(safeImg(`./img/${upper}.png`, upper));
-    return box;
-  }
-
-
 
   let foundAny = false;
 

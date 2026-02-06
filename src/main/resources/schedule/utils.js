@@ -8,7 +8,7 @@ export function formatMillisTime (ms) {
 }
 
 export function cleanTxt(txt) {
-  return txt.replace(/[^a-z0-9 ]/gi, "");
+    return txt.replace(/[^\p{L}\p{N} /]/gu, "");
 }
 
 export function formatCell(val) {
@@ -111,6 +111,71 @@ export function getIpImage(input) {
         .map(s => s.trim().toLowerCase())
         .filter(Boolean)
         .map(key => imageMap[key] || "/img/default.png");
+}
+
+function createFallbackBox(label) {
+    const box = document.createElement("div");
+    box.className = "ip-box ip-fallback";
+
+    const p = document.createElement("p");
+    p.textContent = label || "—";
+
+    box.appendChild(p);
+    return box;
+}
+
+function safeImg(src, alt) {
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = alt;
+
+    img.onerror = () => {
+        const fallback = createFallbackBox(alt);
+        img.replaceWith(fallback);
+    };
+
+    return img;
+}
+
+
+export function createIpBox(txtRaw) {
+    let txt = (txtRaw || "").trim();
+    const clean = cleanTxt(txt);
+
+    if (!clean) return createFallbackBox("—");
+
+    const upper = txt.toUpperCase().replace(/"/g, "");
+    const box = document.createElement("div");
+    box.className = "ip-box";
+
+    // -------- SPLIT DETECTION --------
+    const splitMatch = upper.split(/[\/\s]+/).filter(Boolean);
+
+    // Case 1: Explicit SPLIT
+    if (upper === "SPLIT") {
+        box.appendChild(safeImg("./img/SPLIT.png", "SPLIT"));
+        return box;
+    }
+
+    // Case 2: Split Mode
+    if (splitMatch.length === 2) {
+        const [left, right] = splitMatch;
+        box.classList.add("split");
+
+        const leftImg = safeImg(`./img/SPLIT_L_${left}.png`, left);
+        leftImg.className = "split-left";
+
+        const rightImg = safeImg(`./img/SPLIT_R_${right}.png`, right);
+        rightImg.className = "split-right";
+
+        box.appendChild(leftImg);
+        box.appendChild(rightImg);
+        return box;
+    }
+
+    // -------- NORMAL MODE --------
+    box.appendChild(safeImg(`./img/${upper}.png`, upper));
+    return box;
 }
 
 

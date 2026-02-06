@@ -163,7 +163,7 @@ function render() {
     }
 
     // Columns/fields
-    const keys = new Set(["id", "title", "status", "duration", "delay", "activated"]);
+    const keys = new Set(["id", "title", "status", "duration", "delay"]);
     schedule.columns.forEach(col =>
         Object.keys(col.cells || {}).forEach(k => keys.add(cleanTxt(k)))
     );
@@ -219,8 +219,6 @@ function render() {
                 } else if (t.remaining > 0) {
                     td.textContent = formatMillisTime(t.remaining)
                 }
-            } else if (key === "activated") {
-                td.textContent = millisSince(col.activatedAt, schedule.programStart)
             } else if (key === "delay") {
                   const t = getColumnTiming(col, schedule);
 
