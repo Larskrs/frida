@@ -2,6 +2,7 @@ package com.example.data
 
 import com.example.nextFullSecond
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import kotlin.system.measureTimeMillis
 
@@ -9,78 +10,83 @@ object ScheduleCsvLoader {
 
     private val timeRegex = Regex("""^\d{2}:\d{2}:\d{2}$""")
 
-    fun loadFromResources(fileName: String = "schedule.csv"): Schedule {
-        println("[CSV] ===== LOADING SCHEDULE =====")
-        val totalTime = measureTimeMillis {
+    fun loadFromFile(file: File): Schedule {
+        require(file.exists()) { "CSV not found: ${file.absolutePath}" }
 
-            println("[CSV] File requested: $fileName")
+        val lines = file.readLines(Charsets.UTF_8)
+            .filter { it.isNotBlank() }
 
-            val stream = this::class.java.classLoader
-                .getResourceAsStream(fileName)
-                ?: error("[CSV] ERROR: CSV not found: $fileName")
+        if (lines.size < 2) error("CSV empty")
 
-            val reader = BufferedReader(InputStreamReader(stream))
+        val headers = lines.first()
+            .split(",")
+            .map { it.trim() }
 
-            val lines = reader.readLines().filter { it.isNotBlank() }
+        val rows = lines.drop(1)
 
-            println("[CSV] Total lines read: ${lines.size}")
+        val start = nextFullSecond()
 
-            if (lines.size < 2) error("[CSV] ERROR: CSV empty or missing rows")
+        val columns = rows.mapIndexed { index, row ->
+            val values = splitCsvRow(row)
 
-            // Normalize headers
-            val rawHeaders = lines.first().split(",")
-            val headers = rawHeaders.map { it.trim().lowercase() }
+            val map = headers.zip(values).toMap()
+            val duration = map["EstimatedDuration"]?.toLongOrNull() ?: 0L
 
-            println("[CSV] Headers detected: $headers")
-
-            val rows = lines.drop(1)
-            println("[CSV] Row count: ${rows.size}")
-
-            val start = nextFullSecond()
-            println("[CSV] Program start snapped to: $start")
-
-            val columns = rows.mapIndexed { index, row ->
-
-                println("[CSV] ---- ROW $index ----")
-                println("[CSV] Raw row: $row")
-
-                val rawValues = row.split(",")
-
-                // Pad missing values
-                val values = rawValues + List(headers.size - rawValues.size) { "" }
-
-                val map = headers.zip(values).toMap()
-
-                println("[CSV] Parsed map: $map")
-
-                val col = Column(
-                    id = map["id"] ?: "R$index",
-                    title = map["title"] ?: "Untitled",
-                    duration = parseDuration(map["duration"]),
-                    cells = buildCells(map),
-                    activatedAt = if (index == 0) start else 0
-                )
-
-                println("[CSV] Column built: $col")
-
-                col
-            }
-
-            val schedule = Schedule(
-                columns = columns,
-                activeColumnId = columns.firstOrNull()?.id,
-                programStart = start
+            Column(
+                id = map["PageNumber"] ?: "R$index",
+                title = map["StorySlug"] ?: "",
+                duration = duration * 1000L,
+                cells = map
+                    .filterKeys { it !in setOf("Id", "Title", "Duration") }
+                    .mapValues { CellValue.Text(it.value) }
             )
-
-            println("[CSV] Schedule ready with ${columns.size} columns")
-            println("[CSV] Active column: ${schedule.activeColumnId}")
-
-            return schedule
         }
 
-        println("[CSV] LOAD COMPLETE in ${totalTime}ms")
-        println("[CSV] =========================")
+        return Schedule(
+            programStart = start,
+            columns = columns
+        )
     }
+
+
+    private fun splitCsvRow(row: String): List<String> {
+        val result = mutableListOf<String>()
+        val sb = StringBuilder()
+        var inQuotes = false
+
+        var i = 0
+        while (i < row.length) {
+            val c = row[i]
+
+            when (c) {
+                '"' -> {
+                    if (inQuotes && i + 1 < row.length && row[i + 1] == '"') {
+                        sb.append('"')
+                        i++ // skip escaped quote
+                    } else {
+                        inQuotes = !inQuotes
+                    }
+                }
+
+                ',' -> {
+                    if (inQuotes) {
+                        sb.append(c)
+                    } else {
+                        result.add(sb.toString())
+                        sb.clear()
+                    }
+                }
+
+                else -> sb.append(c)
+            }
+
+            i++
+        }
+
+        result.add(sb.toString())
+        return result
+    }
+
 
     private fun buildCells(map: Map<String, String>): Map<String, CellValue> {
         val ignored = setOf("id", "title", "duration")

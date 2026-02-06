@@ -13,11 +13,76 @@ import {
   getCumulativeOffsetMs, startTicker, createIpBox
 } from "./utils.js?v=1";
 
-let host = location.host;
-if (location.toString().includes("RELOAD_ON_SAVE")) {
-  host = "localhost"
+let ws = null;
+let reconnectTimer = null;
+
+function connectWs() {
+  let host = location.host;
+  if (location.toString().includes("RELOAD_ON_SAVE")) {
+    host = "localhost";
+  }
+
+  console.log("WS: connecting...");
+  ws = new WebSocket("ws://" + host + "/schedule/ws");
+
+  ws.onopen = () => {
+    console.log("WS: connected");
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
+
+  ws.onmessage = e => {
+    const event = JSON.parse(e.data);
+    switch (event.type.split(".").pop()) {
+
+      case "Load":
+        schedule = event.schedule;
+        activeColumnId = schedule?.activeColumnId ?? null;
+        render();
+        break;
+
+      case "ActiveColumnChanged":
+        activeColumnId = event.columnId;
+
+        if (schedule?.columns) {
+          const col = schedule.columns.find(c => c.id === event.columnId);
+          if (col) col.activatedAt = event.activatedAt;
+        }
+
+        render();
+        break;
+
+      case "ColumnEdited":
+        applyEdit(event);
+        render();
+        break;
+    }
+  };
+
+  ws.onerror = err => {
+    console.warn("WS: error", err);
+    // onclose will handle reconnect
+  };
+
+  ws.onclose = () => {
+    console.warn("WS: closed — retrying in 10s");
+    scheduleReconnect();
+  };
 }
-const ws = new WebSocket("ws://" + host + "/schedule/ws");
+
+function scheduleReconnect() {
+  if (reconnectTimer) return; // already waiting
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWs();
+  }, 10_000);
+}
+
+// start first connection
+connectWs();
 
 let schedule = null;
 let activeColumnId = null;
@@ -126,7 +191,7 @@ function render() {
 
   const remaining = getRemainingMs(col);
 
-  const notes = col.cells["posisjon"]?.value;
+  const notes = col.cells["stikkord"]?.value;
   notesEl.textContent = cleanTxt(notes)
 
 

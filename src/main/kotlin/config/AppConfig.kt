@@ -5,5 +5,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppConfig(
     val schedule: String = "default.csv",
-    val port: Int = 80
+    val port: Int = 80,
+    val rundownUrl: String = "rundown_url",
+    val rundownKey: String = "rundown_key",
+    val rundownToken: String = "rundown_token",
+    val rundownId: Int = 0,
 )

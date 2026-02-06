@@ -16,7 +16,7 @@ object ScheduleStore {
 
     fun loadInitial(): Schedule {
         return try {
-            ScheduleCsvLoader.loadFromResources("schedule.csv")
+            ScheduleCsvLoader.loadFromFile(ScheduleManager.get("default.csv"))
         } catch (e: Exception) {
             println("CSV load failed, using fallback: ${e.message}")
             fallbackSchedule()
