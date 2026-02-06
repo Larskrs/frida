@@ -249,28 +249,6 @@ function render() {
     });
 }
 
-/* -------------------- HORIZONTAL NAV -------------------- */
-
-document.addEventListener("keydown", e => {
-    if (!schedule) return;
-
-    const idx = schedule.columns.findIndex(c => c.id === activeColumnId);
-    if (idx === -1) return;
-
-    if (e.key === "ArrowRight") move(idx + 1);
-    if (e.key === "ArrowLeft") move(idx - 1);
-});
-
-function move(newIndex) {
-    if (!schedule) return;
-    if (newIndex < 0 || newIndex >= schedule.columns.length) return;
-
-    ws.send(JSON.stringify({
-        type: "ActiveColumnChanged",
-        columnId: schedule.columns[newIndex].id
-    }));
-}
-
 // Re-render clock every second
 startTicker(1000, () => render())
 

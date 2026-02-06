@@ -1,6 +1,7 @@
 package com.example.websocket
 
 import com.example.data.ScheduleStore
+import com.example.nextFullSecond
 import kotlinx.coroutines.*
 import java.time.Instant
 import kotlin.math.max
@@ -20,7 +21,7 @@ object ScheduleTicker {
 
                 // ---- ALIGN DELAY ----
                 val delayMs = if (programStart != null) {
-                    val now = Instant.now().toEpochMilli()
+                    val now = nextFullSecond()
                     val startMs = programStart
                     val offset = (now - startMs) % 1000
                     max(1, 1000 - offset) // avoid 0
@@ -40,23 +41,26 @@ object ScheduleTicker {
     }
 
     private suspend fun tick() {
-        val schedule = ScheduleStore.get()
-        val activeId = schedule.activeColumnId ?: return
+        var schedule = ScheduleStore.get()
         if (schedule.programStart > Instant.now().toEpochMilli()) return
 
-        val activeIndex = schedule.columns.indexOfFirst { it.id == activeId }
+        var activeId = schedule.activeColumnId ?: return
+        var activeIndex = schedule.columns.indexOfFirst { it.id == activeId }
         if (activeIndex == -1) return
 
-        val activeCol = schedule.columns[activeIndex]
-        val activatedAt = activeCol.activatedAt ?: return
-        val duration = activeCol.duration ?: return
-
-        // if duration is less
-
         val now = Instant.now().toEpochMilli()
-        val elapsed = now - activatedAt
 
-        if (elapsed >= duration) {
+        // LOOP instead of single step
+        while (true) {
+            val activeCol = schedule.columns[activeIndex]
+            val activatedAt = activeCol.activatedAt ?: return
+            val duration = activeCol.duration ?: return
+
+            val elapsed = now - activatedAt
+
+            // Not finished → stop loop
+            if (elapsed < duration) return
+
             val nextIndex = activeIndex + 1
             if (nextIndex >= schedule.columns.size) return
 
@@ -71,12 +75,12 @@ object ScheduleTicker {
                     col
             }
 
-            val updated = schedule.copy(
+            schedule = schedule.copy(
                 activeColumnId = nextCol.id,
                 columns = newColumns
             )
 
-            ScheduleStore.set(updated)
+            ScheduleStore.set(schedule)
 
             broadcast(
                 ScheduleEvent.ActiveColumnChanged(
@@ -84,8 +88,18 @@ object ScheduleTicker {
                     activatedAt = newTime
                 )
             )
+
+            // PREPARE NEXT ITERATION
+            activeIndex = nextIndex
+            activeId = nextCol.id
+
+            // 🚨 BREAK if next column has real duration
+            val nextDuration = nextCol.duration ?: 0
+            if (nextDuration > 0) return
+            // else → continue loop instantly
         }
     }
+
 }
 
 private fun alignedNow(programStart: Long): Long {

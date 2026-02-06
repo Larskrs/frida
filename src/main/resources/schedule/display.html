@@ -3,6 +3,18 @@
 <head>
     <title>Active Column</title>
     <style>
+        :root {
+            --bg: #0a0a0a;
+            --panel: #111111;
+            --border: #2a2a2a;
+            --text: #e6e9ef;
+            --muted: #8b93a1;
+            --accent: #4c6fff;
+
+            --green: #4cff74;
+            --yellow: #ffd54a;
+            --red: #ff4c4c;
+        }
         body {
           font-family: system-ui, sans-serif;
           background: black;
@@ -18,6 +30,7 @@
           height: 100px;
           max-height: 100px;
           display: flex;
+            flex-direction: row;
           align-items: center;
           gap: 24px;
           background: #000;
@@ -35,17 +48,22 @@
         }
 
         .ip-box {
-            width: 70px;
-            height: 70px;
-            min-width: 70px;
-            background: #eee;
-            color: black;
+            width: 64px;
+            height: 64px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            overflow: hidden;
+            position: relative;
+            background: #2a2a2a;
             font-weight: 700;
-            letter-spacing: 1px;
+            transition: none;
+        }
+        .ip-box img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
         }
 
         .tiny-id {
@@ -68,10 +86,18 @@
         .timing {
           font-size: 32px;
           font-weight: 600;
-          min-width: 200px;
+          min-width: 120px;
           text-align: right;
           color: var(--status-color);
           letter-spacing: 4px;
+        }
+        .offsetTime {
+            font-size: 24px;
+            font-weight: 600;
+            min-width: 120px;
+            text-align: right;
+            color: var(--status-color);
+            letter-spacing: 4px;
         }
         .notes {
           font-size: 24px;
@@ -92,11 +118,6 @@
           transition: width 250ms linear;
         }
 
-        /* Status Colors */
-        .upcoming { --status-color: #ffd54a; } /* yellow */
-        .late { --status-color: #ff5252; }     /* red */
-        .ontime { --status-color: #6cff8f; }   /* green */
-
         .evs {
             background: deeppink;
             color: white;
@@ -108,6 +129,11 @@
         .live {
             background: #4cff74;
         }
+
+        .upcoming { --status-color: var(--yellow); }
+        .late { --status-color: var(--red); }
+        .ontime { --status-color: var(--green); }
+        .early { --status-color: #fff44f; }
     </style>
 </head>
 <body>
@@ -116,6 +142,7 @@
     <div id="tinyId" class="tiny-id">—</div>
     <div id="title" class="title">No Active Column</div>
     <div id="notes" class="notes"></div>
+    <div id="offsetTime" class="offsetTime"></div>
     <div id="timing" class="timing">--:--</div>
     <div id="progress" class="progress"></div>
 </div>

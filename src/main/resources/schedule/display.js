@@ -26,8 +26,6 @@ let activeColumnId = null;
 
 ws.onmessage = e => {
   const event = JSON.parse(e.data);
-  console.log(event);
-
   switch (event.type.split(".").pop()) {
 
     case "Load":
@@ -87,6 +85,31 @@ function applyEdit(event) {
 
 /* -------------------- RENDER -------------------- */
 
+function createFallbackBox(label) {
+  const box = document.createElement("div");
+  box.className = "ip-box ip-fallback";
+
+  const p = document.createElement("p");
+  p.textContent = label || "—";
+
+  box.appendChild(p);
+  return box;
+}
+
+function safeImg(src, alt) {
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = alt;
+
+  img.onerror = () => {
+    const fallback = createFallbackBox(alt);
+    img.replaceWith(fallback);
+  };
+
+  return img;
+}
+
+
 function render() {
   if (!schedule || !schedule.columns) return;
 
@@ -95,6 +118,7 @@ function render() {
   const progressEl = document.getElementById("progress");
   const ipContainer = document.getElementById("ipContainer");
   const tinyIdEl = document.getElementById("tinyId");
+  const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
 
   const col = schedule.columns.find(c => c.id === activeColumnId);
@@ -124,29 +148,101 @@ function render() {
 
   ipContainer.innerHTML = "";
 
-  const ip1 = col.cells["ip1"]?.value;
-  const ip2 = col.cells["ip2"]?.value;
+// Define which cell keys should render as IP boxes
+// You can add as many as you want here
+  const ipKeys = [
+    "ip1",
+    "ip2",
+    "variant",
+  ];
 
-  console.log(col)
+// Helper
+  function createIpBox(txtRaw) {
+    let txt = (txtRaw || "").trim();
+    const clean = cleanTxt(txt);
 
-  function createIpBox(txt) {
+    if (!clean) return createFallbackBox("—");
+
+    const upper = txt.toUpperCase();
     const box = document.createElement("div");
-    box.className = "ip-box " + txt.toLowerCase().replace(" ", "");
-    box.textContent = txt.toUpperCase();
+    box.className = "ip-box";
+
+    // -------- SPLIT DETECTION --------
+    const splitMatch = upper.split(/[\/\s]+/).filter(Boolean);
+
+    // Case 1: Explicit SPLIT
+    if (upper === "SPLIT") {
+      box.appendChild(safeImg("./img/SPLIT.png", "SPLIT"));
+      return box;
+    }
+
+    // Case 2: Split Mode
+    if (splitMatch.length === 2) {
+      const [left, right] = splitMatch;
+      box.classList.add("split");
+
+      const leftImg = safeImg(`./img/SPLIT_L_${left}.png`, left);
+      leftImg.className = "split-left";
+
+      const rightImg = safeImg(`./img/SPLIT_R_${right}.png`, right);
+      rightImg.className = "split-right";
+
+      box.appendChild(leftImg);
+      box.appendChild(rightImg);
+      return box;
+    }
+
+    // -------- NORMAL MODE --------
+    box.appendChild(safeImg(`./img/${upper}.png`, upper));
     return box;
   }
 
-  if (ip1) ipContainer.appendChild(createIpBox(ip1));
-  if (ip2) ipContainer.appendChild(createIpBox(ip2));
 
-  if (!ip1 && !ip2) {
-    const box = createIpBox("—");
-    ipContainer.appendChild(box);
+
+  let foundAny = false;
+
+  for (const key of ipKeys) {
+    const value = col.cells[key]?.value;
+    if (!value) continue;
+
+    // Support comma-separated lists too
+    const values = String(value)
+        .split(",")
+        .map(v => v.trim())
+        .filter(Boolean);
+
+    for (const v of values) {
+      ipContainer.appendChild(createIpBox(v));
+      foundAny = true;
+    }
+  }
+
+// Fallback if nothing rendered
+  if (!foundAny) {
+    ipContainer.appendChild(createIpBox("—"));
   }
 
   /* -------- Tiny Column ID -------- */
 
   tinyIdEl.textContent = col.id ?? "—";
+
+  /* -------- Offset time -------- */
+
+  offsetTimeEl.classList.remove("early", "late", "ontime");
+
+  if (!t.abs) {
+    offsetTimeEl.textContent = "-";
+  } else if (t.delay === 0) {
+    offsetTimeEl.textContent = "ON TIME";
+    offsetTimeEl.classList.add("ontime");
+  } else {
+    const sign = t.delay > 0 ? "+" : "-"
+    offsetTimeEl.textContent = `${sign}${formatMillisTime(Math.abs(t.delay))}`;
+  }
+
+  if (t.delay > 0) offsetTimeEl.classList.add("late");
+  if (t.delay < 0) offsetTimeEl.classList.add("early");
+
 
   /* -------- Progress -------- */
 
@@ -154,7 +250,7 @@ function render() {
     const elapsed = getElapsedMs(col);
     const duration = col.duration;
 
-    const percent = getProgress(duration, elapsed+1000);
+    const percent = getProgress(duration, elapsed);
     progressEl.style.width = Math.min(percent, 100) + "%";
 
     if (remaining < 0) {

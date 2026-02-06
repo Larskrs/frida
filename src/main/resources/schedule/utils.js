@@ -88,12 +88,31 @@ export function formatClock(ms) {
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
-    // Milliseconds should be padded to 3 digits
-    const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
 
     // Format the time string
-    return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    return `${hours}:${minutes}:${seconds}`;
 }
+
+const imageMap = {
+    k1: "/img/k1.png",
+    k2: "/img/k2.png",
+    k3: "/img/k3.png",
+    k4: "/img/k4.png",
+    k5: "/img/k5.png",
+    liveu: "/img/liveu.png",
+    evs: "/img/evs.png"
+};
+
+export function getIpImage(input) {
+    if (!input) return [];
+
+    return input
+        .split(",")
+        .map(s => s.trim().toLowerCase())
+        .filter(Boolean)
+        .map(key => imageMap[key] || "/img/default.png");
+}
+
 
 export function getCumulativeOffsetMs(targetCol, schedule) {
     if (!schedule) return 0;
