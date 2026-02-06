@@ -91,6 +91,14 @@ function sendProgramStart(ms) {
     }));
 }
 
+const rundownReload = document.getElementById("rundown-reload");
+
+rundownReload?.addEventListener("click", () => {
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.ReloadSchedule",
+    }));
+})
+
 
 /* -------------------- TIMING -------------------- */
 
@@ -164,11 +172,21 @@ function render() {
             "Program Start: " + formatClock(schedule.programStart);
     }
 
-    // Columns/fields
     const keys = new Set(["id", "title", "status", "duration", "delay"]);
+    const discovered = [];
+
     schedule.columns.forEach(col =>
-        Object.keys(col.cells || {}).forEach(k => keys.add(cleanTxt(k)))
+        Object.keys(col.cells || {}).forEach(raw => {
+            const k = cleanTxt(raw);
+            if (!discovered.includes(k)) discovered.push(k);
+        })
     );
+
+    discovered.forEach(k => {
+        if (schedule.columns.some(col => col.cells?.[k]?.value != null)) {
+            keys.add(k);
+        }
+    });
 
     // Header
     const headerRow = document.createElement("tr");
@@ -193,6 +211,10 @@ function render() {
                 td.textContent = "No column selected – waiting for input from script";
             } else {
                 td.textContent = "";
+            }
+
+            switch (key.toLowerCase()) {
+
             }
 
             row.appendChild(td);

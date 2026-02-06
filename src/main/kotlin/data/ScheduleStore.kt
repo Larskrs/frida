@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.config.ConfigManager
 import com.example.nextFullSecond
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -16,12 +17,54 @@ object ScheduleStore {
 
     fun loadInitial(): Schedule {
         return try {
-            ScheduleCsvLoader.loadFromFile(ScheduleManager.get("default.csv"))
+            Schedule(
+                programStart = nextFullSecond(),
+                activeColumnId = null,
+                columns = loadColumnsFromRundown(ConfigManager.loadOrCreate().rundownId)
+            )
         } catch (e: Exception) {
             println("CSV load failed, using fallback: ${e.message}")
             fallbackSchedule()
         }
     }
+
+    fun updateColumns() {
+        val current = state.get()
+
+        val newColumns = try {
+            loadColumnsFromRundown(ConfigManager.loadOrCreate().rundownId)
+        } catch (e: Exception) {
+            println("Column update failed: ${e.message}")
+            return
+        }
+
+        val oldById = current.columns.associateBy { it.id }
+
+        val merged = newColumns.map { newCol ->
+            val old = oldById[newCol.id]
+
+            if (old == null) {
+                // brand new column → use new as-is
+                newCol
+            } else {
+                // merge: keep runtime state, replace content
+                newCol.copy(
+                    activatedAt = old.activatedAt
+                    // add more runtime fields here if you have them
+                )
+            }
+        }
+
+        // keep schedule progress
+        val updatedSchedule = current.copy(
+            columns = merged,
+            // programStart unchanged
+            // activeColumnId unchanged
+        )
+
+        state.set(updatedSchedule)
+    }
+
 
 
     fun fallbackSchedule(): Schedule {

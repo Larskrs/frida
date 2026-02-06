@@ -22,7 +22,6 @@ body {
     background: var(--bg);
     color: var(--text);
     margin: 0;
-    padding: 24px;
 }
 
 /* ------------------ LAYOUT ------------------ */
@@ -32,7 +31,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0;
-    border: 1px solid var(--border);
 }
 
 .panel {

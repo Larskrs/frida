@@ -22,7 +22,6 @@ fun Application.module(scheduleFile: File) {
 }
 
 fun startServer(port: Int, scheduleFile: File) {
-
     embeddedServer(Netty, port = port) {
         module(scheduleFile)
     }.start(wait = true)

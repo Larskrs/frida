@@ -45,6 +45,17 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     broadcast(event)
                 }
 
+                is ScheduleEvent.ReloadSchedule -> {
+
+                    ScheduleStore.updateColumns()
+                    val s = ScheduleStore.get()
+
+                    println("ATTEMPTING TO RELOAD SCHEDULE")
+
+                    broadcast(ScheduleEvent.Load(s))
+                }
+
+
                 is ScheduleEvent.ProgramStartChanged -> {
                     val current = ScheduleStore.get()
 

@@ -7,11 +7,9 @@ import com.example.websocket.json
 import kotlinx.serialization.json.*
 import java.io.File
 import java.net.URI
-import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.nio.charset.StandardCharsets
 import java.time.Duration
 
 fun dumpRundownRawCsv(config: AppConfig) {
@@ -45,7 +43,7 @@ fun dumpRundownRawCsv(config: AppConfig) {
         }
 
         // ---- HEADERS FROM FIRST OBJECT ----
-        val excludedHeaders = arrayOf("RowID", "Approved", "Floated", "Locked", "Following", "ActualDuration", "Deleted", "sebbecues", "ScriptHasContent", "Position", "RundownID")
+        val excludedHeaders = arrayOf("RowID", "Approved", "PageNumber", "Floated", "Locked", "Following", "ActualDuration", "Deleted", "sebbecues", "ScriptHasContent", "Position", "RundownID")
 
         var headers = arr.first().jsonObject.keys.toList()
         headers = headers.filter {
@@ -82,3 +80,85 @@ fun dumpRundownRawCsv(config: AppConfig) {
     }
 }
 
+fun loadColumnsFromRundown(rundownId: Int): List<Column> {
+    val config = ConfigManager.loadOrCreate()
+
+    val url = config.rundownUrl +
+            "?APIKey=${config.rundownKey}" +
+            "&APIToken=${config.rundownToken}" +
+            "&Action=getRows" +
+            "&RundownID=$rundownId"
+
+    val req = HttpRequest.newBuilder()
+        .uri(URI.create(url))
+        .GET()
+        .timeout(Duration.ofSeconds(10))
+        .build()
+
+    val http = HttpClient.newHttpClient()
+    val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
+
+    if (resp.statusCode() !in 200..299) {
+        error("Rundown API failed: ${resp.statusCode()}")
+    }
+
+    val arr = json.parseToJsonElement(resp.body()) as? JsonArray
+        ?: error("Rundown API returned non-array")
+
+    if (arr.isEmpty()) return emptyList()
+
+    return arr.mapIndexed { index, el ->
+        val obj = el.jsonObject
+
+        val id = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "R$index"
+        val title = obj["StorySlug"]?.jsonPrimitive?.contentOrNull ?: ""
+
+        val durationSec =
+            obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+                ?: 0L
+
+        val cells = obj
+            .filterKeys {
+                it !in setOf(
+                    "RowID",
+                    "Approved",
+                    "Floated",
+                    "Locked",
+                    "Following",
+                    "Deleted",
+                    "RundownID",
+                    "StorySlug",
+                    "ActualDuration",
+                    "EstimatedDuration",
+                    "ScriptHasContent",
+                    "Break",
+                    "PageNumber",
+                    "Position",
+                )
+            }
+            .mapValues { CellValue.Text(it.value.jsonPrimitive.contentOrNull ?: "") }
+
+        Column(
+            id = id,
+            title = title,
+            duration = durationSec * 1000L,
+            cells = cells
+        )
+    }
+}
+
+private fun parseTimeToMillis(text: String): Long {
+    val parts = text.split(":").mapNotNull { it.toLongOrNull() }
+
+    if (parts.size != 3) {
+        println("[CSV] Invalid time format: $text")
+        return 0
+    }
+
+    val (h, m, s) = parts
+    val ms = (h * 3600 + m * 60 + s) * 1000
+
+    println("[CSV] Time parsed [$text] -> $ms ms")
+
+    return ms
+}
