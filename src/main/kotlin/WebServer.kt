@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.config.AppPaths.isDev
 import com.example.websocket.ScheduleTicker
 import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer
@@ -14,7 +15,7 @@ fun Application.module(scheduleFile: File) {
     install(WebSockets) {
         Json { ignoreUnknownKeys = true }
     }
-    ScheduleTicker.start(this)
+//    ScheduleTicker.start(this)
     routing {
         scheduleRoutes()
     }

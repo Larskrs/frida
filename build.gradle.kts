@@ -17,7 +17,9 @@ application {
 
 tasks.named<JavaExec>("run") {
     environment("DEV_MODE", "true")
+    systemProperty("io.ktor.development", "true")
 }
+
 
 kotlin {
     jvmToolchain(21)
