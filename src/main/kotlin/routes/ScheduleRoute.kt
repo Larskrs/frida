@@ -3,15 +3,14 @@ package routes
 import com.example.websocket.handleSocket
 import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
 import io.ktor.server.websocket.webSocket
 
 fun Route.scheduleRoutes() {
 
-    staticResources("schedule", "schedule")
-    staticResources("chat", "chat")
+    staticResources("schedule", "src/schedule")
+    staticResources("chat", "src/chat")
 
-    webSocket("/schedule/ws") {
+    webSocket("schedule/ws") {
         handleSocket(this)
     }
 }

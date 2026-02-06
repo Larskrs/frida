@@ -12,7 +12,11 @@ version = "0.0.1"
 val ktor_version = "2.3.9"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("com.example.MainKt")
+}
+
+tasks.named<JavaExec>("run") {
+    environment("DEV_MODE", "true")
 }
 
 kotlin {
@@ -32,6 +36,7 @@ dependencies {
     implementation(libs.ktor.server.config.yaml)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+    implementation("com.charleskorn.kaml:kaml:0.104.0")
 }
 
 tasks.register<Exec>("buildExe") {

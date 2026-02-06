@@ -6,3 +6,4 @@ ktor:
         port: 80
         watch:
             - resources
+            - .dev
