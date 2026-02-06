@@ -15,7 +15,7 @@ fun Application.module(scheduleFile: File) {
     install(WebSockets) {
         Json { ignoreUnknownKeys = true }
     }
-//    ScheduleTicker.start(this)
+    ScheduleTicker.start(this)
     routing {
         scheduleRoutes()
     }

@@ -48,28 +48,41 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                 is ScheduleEvent.ProgramStartChanged -> {
                     val current = ScheduleStore.get()
 
-                    val start = nextFullSecond()
+                    val isNow = event.programStart == 0L
+                    val start = if (isNow) nextFullSecond() else event.programStart
 
-                    val firstId = current.columns.firstOrNull()?.id
+                    val updated = if (isNow) {
+                        // FORCE first column active
+                        val firstId = current.columns.firstOrNull()?.id
 
-                    val newColumns = current.columns.mapIndexed { index, col ->
-                        if (index == 0) {
-                            col.copy(activatedAt = start)
-                        } else {
-                            col.copy(activatedAt = 0)
+                        val newColumns = current.columns.mapIndexed { index, col ->
+                            if (index == 0) {
+                                col.copy(activatedAt = start)
+                            } else {
+                                col.copy(activatedAt = 0)
+                            }
                         }
+
+                        current.copy(
+                            programStart = start,
+                            activeColumnId = firstId,
+                            columns = newColumns
+                        )
+                    } else {
+                        // DO NOT force activation
+                        current.copy(
+                            programStart = start,
+                            activeColumnId = null,
+                            columns = current.columns.map {
+                                it.copy(activatedAt = 0)
+                            }
+                        )
                     }
 
-                    val updated = current.copy(
-                        programStart = start,
-                        activeColumnId = firstId,
-                        columns = newColumns
-                    )
-
                     ScheduleStore.set(updated)
-
                     broadcast(ScheduleEvent.Load(updated))
                 }
+
 
 
                 is ScheduleEvent.ActiveColumnChanged -> {

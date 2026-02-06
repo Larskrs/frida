@@ -96,7 +96,21 @@ function render() {
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
 
-  const col = schedule.columns.find(c => c.id === activeColumnId);
+  const now = Date.now();
+  const programStart = schedule.programStart ?? null;
+
+  let col = schedule.columns.find(c => c.id === activeColumnId);
+
+  // PRE-START MODE
+  const isPreStart =
+      programStart &&
+      !activeColumnId &&
+      schedule.columns.length > 0 &&
+      now < programStart;
+
+  if (isPreStart) {
+    col = schedule.columns[0];
+  }
 
   const t = getColumnTiming(col, schedule)
 

@@ -42,13 +42,46 @@ object ScheduleTicker {
 
     private suspend fun tick() {
         var schedule = ScheduleStore.get()
-        if (schedule.programStart > Instant.now().toEpochMilli()) return
+
+        val now = Instant.now().toEpochMilli()
+        val programStart = schedule.programStart ?: return
+
+        // ---------- PRE-START ACTIVATION ----------
+        if (now >= programStart && schedule.activeColumnId == null) {
+            val firstCol = schedule.columns.firstOrNull() ?: return
+
+            val newTime = alignedNow(programStart)
+
+            val newColumns = schedule.columns.map { col ->
+                if (col.id == firstCol.id)
+                    col.copy(activatedAt = newTime)
+                else
+                    col
+            }
+
+            schedule = schedule.copy(
+                activeColumnId = firstCol.id,
+                columns = newColumns
+            )
+
+            ScheduleStore.set(schedule)
+
+            broadcast(
+                ScheduleEvent.ActiveColumnChanged(
+                    columnId = firstCol.id,
+                    activatedAt = newTime
+                )
+            )
+
+            return // important — don't fall through
+        }
+
+        // ---------- NORMAL FLOW ----------
+        if (programStart > now) return
 
         var activeId = schedule.activeColumnId ?: return
         var activeIndex = schedule.columns.indexOfFirst { it.id == activeId }
         if (activeIndex == -1) return
-
-        val now = Instant.now().toEpochMilli()
 
         // LOOP instead of single step
         while (true) {

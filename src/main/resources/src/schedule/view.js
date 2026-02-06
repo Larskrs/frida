@@ -70,7 +70,7 @@ const startSetBtn = document.getElementById("program-start-set");
 
 startNowBtn?.addEventListener("click", () => {
     const now = Date.now();
-    sendProgramStart(now);
+    sendProgramStart(0);
 
     // also update input visually
     const d = new Date(now);
@@ -115,6 +115,7 @@ document.addEventListener("keydown", e => {
     if (idx === -1) return;
 
     if (e.key === "ArrowDown" || e.key === " ") {
+        e.preventDefault()
         setActiveIndex(idx + 1);
     }
 
@@ -145,15 +146,16 @@ function render() {
 
     if (!schedule) return;
 
-    // Active label
     const activeLabel = document.getElementById("active-column");
     const activeItem = schedule.columns.find(c => c.id === activeColumnId);
+
     if (!activeItem) {
-        activeLabel.textContent = "None"
-        return;
+        activeLabel.textContent = "No column selected";
+    } else {
+        const t = getColumnTiming(activeItem, schedule);
+        activeLabel.textContent =
+            `${activeItem.id} - ${cleanTxt(activeItem.title)} - ${formatMillisTime(t.remaining)}`;
     }
-    const t = getColumnTiming(activeItem, schedule)
-    activeLabel.textContent = `${activeItem.id} - ${cleanTxt(activeItem.title)} - ${formatMillisTime(t.remaining)}`
 
     // Program start label (optional)
     const startLabel = document.getElementById("program-start");
@@ -176,6 +178,28 @@ function render() {
         headerRow.appendChild(th);
     });
     table.appendChild(headerRow);
+
+    // Placeholder row if no active column
+    if (!activeItem) {
+        const row = document.createElement("tr");
+        row.classList.add("placeholder-row");
+
+        keys.forEach((key, i) => {
+            const td = document.createElement("td");
+
+            if (i === 0) {
+                td.textContent = "-";
+            } else if (key === "title") {
+                td.textContent = "No column selected – waiting for input from script";
+            } else {
+                td.textContent = "";
+            }
+
+            row.appendChild(td);
+        });
+
+        table.appendChild(row);
+    }
 
     // Rows
     schedule.columns.forEach(col => {

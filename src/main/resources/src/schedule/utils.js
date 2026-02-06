@@ -181,6 +181,7 @@ export function createIpBox(txtRaw) {
 
 export function getCumulativeOffsetMs(targetCol, schedule) {
     if (!schedule) return 0;
+    if (!targetCol) return 0
 
     let sum = 0;
     for (const col of schedule.columns) {
@@ -198,10 +199,13 @@ export function getColumnAbsoluteStart(col, schedule) {
 }
 
 export function getDurationMs(col) {
-    return Number(col.duration ?? 0);
+    return Number(col?.duration ?? 0);
 }
 
 export function getColumnTiming(col, schedule) {
+
+    if (!schedule) return 0
+    if (!col) return 0
 
     const abs = getColumnAbsoluteStart(col, schedule);
     const duration = getDurationMs(col);
