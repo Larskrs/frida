@@ -13,8 +13,8 @@ sealed class ScheduleEvent {
     object ReloadSchedule : ScheduleEvent()
 
     @Serializable
-    data class ColumnEdited(
-        val columnId: String,
+    data class RowEdited(
+        val rowId: String,
         val key: String,
         val value: CellValue
     ) : ScheduleEvent()
@@ -23,8 +23,8 @@ sealed class ScheduleEvent {
     data class ProgramStartChanged(val programStart: Long) : ScheduleEvent()
 
     @Serializable
-    data class ActiveColumnChanged(
-        val columnId: String,
+    data class ActiveRowChanged(
+        val rowId: Int,
         var activatedAt: Long =0,
     ) : ScheduleEvent()
 }

@@ -1,10 +1,7 @@
 package com.example.data
 
 import com.example.nextFullSecond
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
-import kotlin.system.measureTimeMillis
 
 object ScheduleCsvLoader {
 
@@ -21,19 +18,19 @@ object ScheduleCsvLoader {
         val headers = lines.first()
             .split(",")
             .map { it.trim() }
-
-        val rows = lines.drop(1)
-
         val start = nextFullSecond()
 
-        val columns = rows.mapIndexed { index, row ->
-            val values = splitCsvRow(row)
+        val dropped = lines.drop(1)
+
+        val rows = dropped.mapIndexed { index, r ->
+            val values = splitCsvRow(r)
 
             val map = headers.zip(values).toMap()
             val duration = map["EstimatedDuration"]?.toLongOrNull() ?: 0L
 
-            Column(
-                id = map["PageNumber"] ?: "R$index",
+            Row(
+                id = map["RowId"]?.toIntOrNull() ?: index,
+                page = map["PageNumber"] ?: "A$index",
                 title = map["StorySlug"] ?: "",
                 duration = duration * 1000L,
                 cells = map
@@ -44,7 +41,7 @@ object ScheduleCsvLoader {
 
         return Schedule(
             programStart = start,
-            columns = columns
+            rows = rows
         )
     }
 

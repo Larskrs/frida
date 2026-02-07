@@ -4,8 +4,8 @@ import {
     formatMillisTime,
     parseTimeToTodayMillis,
     formatClock,
-    getColumnTiming,
-    getColumnAbsoluteStart,
+    getRowTiming,
+    getRowAbsoluteStart,
     getDurationMs,
     getCumulativeOffsetMs, millisSince, startTicker
 } from "./utils.js?v=1";
@@ -17,7 +17,7 @@ if (location.toString().includes("RELOAD_ON_SAVE")) {
 const ws = new WebSocket("ws://" + host + "/schedule/ws");
 
 let schedule = null;
-let activeColumnId = null;
+let activeRowId = null;
 
 /* -------------------- WS -------------------- */
 
@@ -38,25 +38,25 @@ ws.onmessage = e => {
         case "Load":
             console.log("Attempting to load schedule");
             schedule = event.schedule;
-            activeColumnId = schedule?.activeColumnId ?? null;
+            activeRowId = schedule?.activeRowId ?? null;
             console.log(schedule)
             render();
             break;
 
-        case "ActiveColumnChanged":
-            activeColumnId = event.columnId;
+        case "ActiveRowChanged":
+            activeRowId = event.rowId;
 
-            if (schedule?.columns) {
-              const col = schedule.columns.find(c => c.id === event.columnId);
-              if (col) {
-                 col.activatedAt = event.activatedAt;
+            if (schedule?.rows) {
+              const row = schedule.rows.find(c => c.id === event.rowId);
+              if (row) {
+                 row.activatedAt = event.activatedAt;
                }
             }
 
             render();
             break;
 
-        case "ColumnEdited":
+        case "rowEdited":
             applyEdit(event);
             render();
             break;
@@ -104,14 +104,14 @@ rundownReload?.addEventListener("click", () => {
 
 // Duration is stored in cells["duration"].value in SECONDS
 
-// Sum all durations ABOVE this column
+// Sum all durations ABOVE this row
 
 /* -------------------- EDITS -------------------- */
 
 function applyEdit(event) {
-    const col = schedule.columns.find(c => c.id === event.columnId);
-    if (!col) return;
-    col.cells[event.key] = event.value;
+    const row = schedule.rows.find(c => c.id === event.rowId);
+    if (!row) return;
+    row.cells[event.key] = event.value;
 }
 
 /* -------------------- INPUT -------------------- */
@@ -119,7 +119,7 @@ function applyEdit(event) {
 document.addEventListener("keydown", e => {
     if (!schedule) return;
 
-    const idx = schedule.columns.findIndex(c => c.id === activeColumnId);
+    const idx = schedule.rows.findIndex(c => c.id === activeRowId);
     if (idx === -1) return;
 
     if (e.key === "ArrowDown" || e.key === " ") {
@@ -134,15 +134,15 @@ document.addEventListener("keydown", e => {
 
 function setActiveIndex(newIndex) {
     if (!schedule) return;
-    if (newIndex < 0 || newIndex >= schedule.columns.length) return;
+    if (newIndex < 0 || newIndex >= schedule.rows.length) return;
 
-    setActive(schedule.columns[newIndex].id);
+    setActive(schedule.rows[newIndex].id);
 }
 
-function setActive(columnId) {
+function setActive(rowId) {
     ws.send(JSON.stringify({
-        type: "com.example.websocket.ScheduleEvent.ActiveColumnChanged",
-        columnId
+        type: "com.example.websocket.ScheduleEvent.ActiveRowChanged",
+        rowId
     }));
 }
 
@@ -154,13 +154,13 @@ function render() {
 
     if (!schedule) return;
 
-    const activeLabel = document.getElementById("active-column");
-    const activeItem = schedule.columns.find(c => c.id === activeColumnId);
+    const activeLabel = document.getElementById("active-row");
+    const activeItem = schedule.rows.find(c => c.id === activeRowId);
 
     if (!activeItem) {
-        activeLabel.textContent = "No column selected";
+        activeLabel.textContent = "No row selected";
     } else {
-        const t = getColumnTiming(activeItem, schedule);
+        const t = getRowTiming(activeItem, schedule);
         activeLabel.textContent =
             `${activeItem.id} - ${cleanTxt(activeItem.title)} - ${formatMillisTime(t.remaining)}`;
     }
@@ -172,16 +172,13 @@ function render() {
             "Program Start: " + formatClock(schedule.programStart);
     }
 
-    const keys = new Set(["id", "title", "status", "duration", "delay"]);
+    const keys = new Set(["page", "title", "status", "duration", "delay"]);
 
-    schedule.columns.forEach(col =>
-        Object.keys(col.cells || {}).forEach(raw => {
+    schedule.rows.forEach(row =>
+        Object.keys(row.cells || {}).forEach(raw => {
             keys.add(cleanTxt(raw))
         })
     );
-
-    console.log(schedule.columns?.[0])
-    console.log({keys})
 
     // Header
     const headerRow = document.createElement("tr");
@@ -192,7 +189,7 @@ function render() {
     });
     table.appendChild(headerRow);
 
-    // Placeholder row if no active column
+    // Placeholder row if no active row
     if (!activeItem) {
         const row = document.createElement("tr");
         row.classList.add("placeholder-row");
@@ -203,7 +200,7 @@ function render() {
             if (i === 0) {
                 td.textContent = "-";
             } else if (key === "title") {
-                td.textContent = "No column selected – waiting for input from script";
+                td.textContent = "No row selected – waiting for input from script";
             } else {
                 td.textContent = "";
             }
@@ -219,30 +216,30 @@ function render() {
     }
 
     // Rows
-    schedule.columns.forEach(col => {
-        const row = document.createElement("tr");
+    schedule.rows.forEach(row => {
+        const rowEl = document.createElement("tr");
 
-        if (col.id === activeColumnId) {
-            row.classList.add("active");
+        if (row.id === activeRowId) {
+            rowEl.classList.add("active");
         }
 
-        row.addEventListener("click", () => setActive(col.id));
+        rowEl.addEventListener("click", () => setActive(row.id));
 
         keys.forEach(key => {
             const td = document.createElement("td");
 
-            if (key === "id") {
-                td.textContent = col.id;
+            if (key === "page") {
+                td.textContent = row.page;
 
             } else if (key === "title") {
-                td.textContent = cleanTxt(col.title);
+                td.textContent = cleanTxt(row.title);
 
             } else if (key === "start") {
-                const t = getColumnTiming(col, schedule);
+                const t = getRowTiming(row, schedule);
                 td.textContent = t.abs ? formatClock(t.abs) : "-";
 
             } else if (key === "status") {
-                const t = getColumnTiming(col, schedule);
+                const t = getRowTiming(row, schedule);
                 td.textContent = t.status;
 
                 td.classList.remove("upcoming", "ontime", "late", "overdue");
@@ -252,16 +249,16 @@ function render() {
                 if (t.status === "OVERDUE") td.classList.add("late");
 
             } else if (key === "duration") {
-                const t = getColumnTiming(col, schedule)
-                const activeIndex = schedule.columns.findIndex(c => c.id === activeColumnId);
-                const idx = schedule.columns.findIndex(c => c.id === col.id);
-                if (activeColumnId !== col.id) {
+                const t = getRowTiming(row, schedule)
+                const activeIndex = schedule.rows.findIndex(c => c.id === activeRowId);
+                const idx = schedule.rows.findIndex(c => c.id === row.id);
+                if (activeRowId !== row.id) {
                     td.textContent = formatMillisTime(t.duration)
                 } else if (t.remaining > 0) {
                     td.textContent = formatMillisTime(t.remaining)
                 }
             } else if (key === "delay") {
-                  const t = getColumnTiming(col, schedule);
+                  const t = getRowTiming(row, schedule);
 
                   if (!t.abs) {
                       td.textContent = "-";
@@ -278,13 +275,13 @@ function render() {
 
 
             } else {
-                td.textContent = formatCell(col.cells?.[key]);
+                td.textContent = formatCell(row.cells?.[key]);
             }
 
-            row.appendChild(td);
+            rowEl.appendChild(td);
         });
 
-        table.appendChild(row);
+        table.appendChild(rowEl);
     });
 }
 

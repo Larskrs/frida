@@ -53,28 +53,28 @@ object ScheduleTicker {
         val programStart = schedule.programStart ?: return
 
         // ---------- PRE-START ACTIVATION ----------
-        if (now >= programStart && schedule.activeColumnId == null) {
-            val firstCol = schedule.columns.firstOrNull() ?: return
+        if (now >= programStart && schedule.activeRowId == null) {
+            val firstRow = schedule.rows.firstOrNull() ?: return
 
             val newTime = alignedNow(programStart)
 
-            val newColumns = schedule.columns.map { col ->
-                if (col.id == firstCol.id)
+            val newRows = schedule.rows.map { col ->
+                if (col.id == firstRow.id)
                     col.copy(activatedAt = newTime)
                 else
                     col
             }
 
             schedule = schedule.copy(
-                activeColumnId = firstCol.id,
-                columns = newColumns
+                activeRowId = firstRow.id,
+                rows = newRows
             )
 
             ScheduleStore.set(schedule)
 
             broadcast(
-                ScheduleEvent.ActiveColumnChanged(
-                    columnId = firstCol.id,
+                ScheduleEvent.ActiveRowChanged(
+                    rowId = firstRow.id,
                     activatedAt = newTime
                 )
             )
@@ -85,13 +85,13 @@ object ScheduleTicker {
         // ---------- NORMAL FLOW ----------
         if (programStart > now) return
 
-        var activeId = schedule.activeColumnId ?: return
-        var activeIndex = schedule.columns.indexOfFirst { it.id == activeId }
+        var activeId = schedule.activeRowId ?: return
+        var activeIndex = schedule.rows.indexOfFirst { it.id == activeId }
         if (activeIndex == -1) return
 
         // LOOP instead of single step
         while (true) {
-            val activeCol = schedule.columns[activeIndex]
+            val activeCol = schedule.rows[activeIndex]
             val activatedAt = activeCol.activatedAt ?: return
             val duration = activeCol.duration ?: return
 
@@ -101,13 +101,13 @@ object ScheduleTicker {
             if (elapsed < duration) return
 
             val nextIndex = activeIndex + 1
-            if (nextIndex >= schedule.columns.size) return
+            if (nextIndex >= schedule.rows.size) return
 
-            val nextCol = schedule.columns[nextIndex]
+            val nextCol = schedule.rows[nextIndex]
 
             val newTime = alignedNow(schedule.programStart)
 
-            val newColumns = schedule.columns.map { col ->
+            val newColumns = schedule.rows.map { col ->
                 if (col.id == nextCol.id)
                     col.copy(activatedAt = newTime)
                 else
@@ -115,15 +115,15 @@ object ScheduleTicker {
             }
 
             schedule = schedule.copy(
-                activeColumnId = nextCol.id,
-                columns = newColumns
+                activeRowId = nextCol.id,
+                rows = newColumns
             )
 
             ScheduleStore.set(schedule)
 
             broadcast(
-                ScheduleEvent.ActiveColumnChanged(
-                    columnId = nextCol.id,
+                ScheduleEvent.ActiveRowChanged(
+                    rowId = nextCol.id,
                     activatedAt = newTime
                 )
             )

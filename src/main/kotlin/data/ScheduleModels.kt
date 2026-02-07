@@ -7,25 +7,25 @@ import java.time.Instant
 
 @Serializable
 data class Schedule(
-    val columns: List<Column>,
-    var activeColumnId: String? = null,
+    val rows: List<Row>,
+    var activeRowId: Int? = null,
     var programStart: Long,
 )
 
 @Serializable
-data class Column(
-    val id: String,
+data class Row(
+    val id: Int,
+    val page: String,
     val title: String,
     val duration: Long,
     val cells: Map<String, CellValue>,
-
     var activatedAt: Long = 0,
 )
-fun Column.absoluteStart(schedule: Schedule): Instant {
+fun Row.absoluteStart(schedule: Schedule): Instant {
     val start = Instant.ofEpochMilli(schedule.programStart)
 
     var sum = 0L
-    for (col in schedule.columns) {
+    for (col in schedule.rows) {
         if (col.id == this.id) break
         sum += col.duration
     }
@@ -33,7 +33,7 @@ fun Column.absoluteStart(schedule: Schedule): Instant {
     return start.plusMillis(sum)
 }
 
-fun Column.timeUntilStart(schedule: Schedule): Duration {
+fun Row.timeUntilStart(schedule: Schedule): Duration {
     val now = Instant.now()
     return Duration.between(now, absoluteStart(schedule))
 }

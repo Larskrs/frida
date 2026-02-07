@@ -80,7 +80,7 @@ fun dumpRundownRawCsv(config: AppConfig) {
     }
 }
 
-fun loadColumnsFromRundown(rundownId: Int): List<Column> {
+fun loadColumnsFromRundown(rundownId: Int): List<Row> {
     val config = ConfigManager.loadOrCreate()
 
     val url = config.rundownUrl +
@@ -156,7 +156,9 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
     return arr.mapIndexed { index, el ->
         val obj = el.jsonObject
 
-        val id = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "R$index"
+        val id: Int = (obj["RowId"]?.jsonPrimitive?.contentOrNull)?.toIntOrNull() ?: index
+        val page = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "A$index"
+
         val title = obj["StorySlug"]?.jsonPrimitive?.contentOrNull ?: ""
 
         val durationSec =
@@ -170,8 +172,9 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
             cells[key] = CellValue.Text(value)
         }
 
-        Column(
+        Row(
             id = id,
+            page = page,
             title = title,
             duration = durationSec * 1000L,
             cells = cells

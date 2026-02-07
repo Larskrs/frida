@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Active Column</title>
+    <title>Active row</title>
     <style>
         :root {
             --bg: #0a0a0a;
@@ -12,34 +12,33 @@
             --accent: #4c6fff;
 
             --green: #4cff74;
-            --yellow: #ffd54a;
+            --yellow: #fff44f;
             --red: #ff4c4c;
         }
         body {
-          font-family: system-ui, sans-serif;
-          background: black;
-          color: white;
-          margin: 0;
-          height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+            font-family: system-ui, sans-serif;
+            background: black;
+            color: white;
+            margin: 0;
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .strip {
-          max-height: 100px;
+            max-height: 100px;
             height: 80px;
-          display: flex;
+            display: flex;
             flex-direction: row;
-          align-items: center;
+            align-items: center;
             justify-content: space-between;
-          gap: 24px;
-          background: #000;
-          border: 1px solid #333;
-          border-bottom: none;
-          padding: 6px 24px 12px 16px;
-          width: 100vw;
-          position: relative;
+            gap: 24px;
+            background: #000;
+            border: 1px solid #333;
+            border-bottom: none;
+            padding: 6px 24px 12px 16px;
+            position: relative;
         }
 
         .ip-container {
@@ -78,26 +77,25 @@
 
         /* Title */
         .title {
-          flex: 1;
-          font-size: 42px;
+            flex: 1;
+            font-size: 42px;
             margin-bottom: 4px;
-          font-weight: 400;
+            font-weight: 400;
             align-items: center;
             text-align: center;
-          overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
             translate: 0 -1px;
         }
 
         /* Timing */
         .timing {
-          font-size: 42px;
-          font-weight: 600;
-          min-width: 120px;
-          text-align: right;
-          color: var(--status-color);
-          letter-spacing: 4px;
+            font-size: 42px;
+            font-weight: 600;
+            text-align: right;
+            color: var(--status-color);
+            letter-spacing: 4px;
         }
         .offsetTime {
             font-size: 36px;
@@ -109,33 +107,32 @@
             translate: 0 -1px;
         }
         .notes {
-          font-size: 24px;
-          font-weight: 600;
-          min-width: 200px;
-          text-align: right;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: right;
             margin-left: 16px;
-          color: #ccc;
+            color: #ccc;
         }
 
         .progress {
-          position: absolute;
-          height: 4px;
-          background: var(--status-color);
-          opacity: 0.75;
-          left: 0;
-          bottom: 0;
-          right: 0;
-          transition: width 250ms linear;
+            position: absolute;
+            height: 4px;
+            background: var(--status-color);
+            opacity: 0.75;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            transition: width 250ms linear;
             z-index: 2;
         }
         .progressBG {
-          position: absolute;
-          height: 4px;
-          background: #333333;
-          opacity: 0.75;
-          left: 0;
-          bottom: 0;
-          right: 0;
+            position: absolute;
+            height: 4px;
+            background: #333333;
+            opacity: 0.75;
+            left: 0;
+            bottom: 0;
+            right: 0;
         }
 
         .row {
@@ -144,6 +141,61 @@
             gap: 32px;
             align-items: center;
             justify-content: center;
+        }
+
+        .upcoming-container {
+            display: table;
+            border-collapse: collapse;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 16px;
+            background: #050505;
+            border: 0px solid #222;
+        }
+
+        .upcoming-row {
+            gap: 32px;
+            align-items: center;
+            border: 1px solid #333;
+            background: #000;
+            padding: 8px 24px 8px 16px;
+            font-size: 32px;
+            color: #ccc;
+        }
+        .upcoming-row:nth-child(even) {
+            background: #0f0f0f;
+        }
+
+        .upcoming-row td {
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+
+        .upcoming-ips {
+            display: flex;
+        }
+        .upcoming-ips .ip-box {
+            height: 36px;
+            width: 42px;
+        }
+
+        .upcoming-page {
+            color: var(--yellow);
+        }
+
+        .upcoming-title {
+            flex: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .upcoming-time {
+            font-weight: 600;
+            letter-spacing: 2px;
+            min-width: 120px;
+            text-align: right;
         }
 
         .evs {
@@ -162,6 +214,7 @@
         .late { --status-color: var(--red); }
         .ontime { --status-color: var(--green); }
         .early { --status-color: #fff44f; }
+
     </style>
 </head>
 <body>
@@ -169,7 +222,7 @@
     <div class="row">
         <div id="ipContainer" class="ip-container"></div>
         <div class="tiny-id" id="tinyId"></div>
-        <div id="title" class="title">No Active Column</div>
+        <div id="title" class="title">No Active row</div>
         <div id="notes" class="notes"></div>
     </div>
     <div class="row">
@@ -180,7 +233,7 @@
     <div class="progressBG"></div>
 </div>
 
-
+<div id="upcomingContainer" class="upcoming-container"></div>
 
 <script type="module" src="display.js?v=1"></script>
 </body>

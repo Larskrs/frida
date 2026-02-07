@@ -40,7 +40,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
             when (event) {
 
-                is ScheduleEvent.ColumnEdited -> {
+                is ScheduleEvent.RowEdited -> {
                     // TODO: mutate store later
                     broadcast(event)
                 }
@@ -64,9 +64,9 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                     val updated = if (isNow) {
                         // FORCE first column active
-                        val firstId = current.columns.firstOrNull()?.id
+                        val firstId = current.rows.firstOrNull()?.id
 
-                        val newColumns = current.columns.mapIndexed { index, col ->
+                        val newColumns = current.rows.mapIndexed { index, col ->
                             if (index == 0) {
                                 col.copy(activatedAt = start)
                             } else {
@@ -76,15 +76,15 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                         current.copy(
                             programStart = start,
-                            activeColumnId = firstId,
-                            columns = newColumns
+                            activeRowId = firstId,
+                            rows = newColumns
                         )
                     } else {
                         // DO NOT force activation
                         current.copy(
                             programStart = start,
-                            activeColumnId = null,
-                            columns = current.columns.map {
+                            activeRowId = null,
+                            rows = current.rows.map {
                                 it.copy(activatedAt = 0)
                             }
                         )
@@ -96,12 +96,12 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
 
 
-                is ScheduleEvent.ActiveColumnChanged -> {
+                is ScheduleEvent.ActiveRowChanged -> {
                     event.activatedAt = Instant.now().toEpochMilli()
                     val current = ScheduleStore.get()
 
-                    val newColumns = current.columns.map { col ->
-                        if (col.id == event.columnId) {
+                    val newColumns = current.rows.map { col ->
+                        if (col.id == event.rowId) {
                             col.copy(activatedAt = event.activatedAt)
                         } else {
                             col
@@ -109,8 +109,8 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     }
 
                     val updatedSchedule = current.copy(
-                        activeColumnId = event.columnId,
-                        columns = newColumns
+                        activeRowId = event.rowId,
+                        rows = newColumns
                     )
 
                     ScheduleStore.set(updatedSchedule)

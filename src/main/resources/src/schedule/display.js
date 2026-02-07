@@ -4,8 +4,8 @@ import {
   formatMillisTime,
   parseTimeToTodayMillis,
   formatClock,
-  getColumnTiming,
-  getColumnAbsoluteStart,
+  getRowTiming,
+  getRowAbsoluteStart,
   getRemainingMs,
   formatMs,
   getElapsedMs,
@@ -39,22 +39,22 @@ function connectWs() {
 
       case "Load":
         schedule = event.schedule;
-        activeColumnId = schedule?.activeColumnId ?? null;
+        activeRowId = schedule?.activeRowId ?? null;
         render();
         break;
 
-      case "ActiveColumnChanged":
-        activeColumnId = event.columnId;
+      case "ActiveRowChanged":
+        activeRowId = event.rowId;
 
-        if (schedule?.columns) {
-          const col = schedule.columns.find(c => c.id === event.columnId);
-          if (col) col.activatedAt = event.activatedAt;
+        if (schedule?.rows) {
+          const row = schedule.rows.find(c => c.id === event.rowId);
+          if (row) row.activatedAt = event.activatedAt;
         }
 
         render();
         break;
 
-      case "ColumnEdited":
+      case "rowEdited":
         applyEdit(event);
         render();
         break;
@@ -85,7 +85,7 @@ function scheduleReconnect() {
 connectWs();
 
 let schedule = null;
-let activeColumnId = null;
+let activeRowId = null;
 
 /* -------------------- WS -------------------- */
 
@@ -95,24 +95,24 @@ ws.onmessage = e => {
 
     case "Load":
       schedule = event.schedule;
-      activeColumnId = schedule?.activeColumnId ?? null;
+      activeRowId = schedule?.activeRowId ?? null;
       render();
       break;
 
-    case "ActiveColumnChanged":
-      activeColumnId = event.columnId;
+    case "ActiveRowChanged":
+      activeRowId = event.rowId;
 
-      if (schedule?.columns) {
-        const col = schedule.columns.find(c => c.id === event.columnId);
-        if (col) {
-          col.activatedAt = event.activatedAt;
+      if (schedule?.rows) {
+        const row = schedule.rows.find(c => c.id === event.rowId);
+        if (row) {
+          row.activatedAt = event.activatedAt;
         }
       }
 
       render();
       break;
 
-    case "ColumnEdited":
+    case "rowEdited":
       applyEdit(event);
       render();
       break;
@@ -125,11 +125,11 @@ startTicker(250, () => render())
 
 /* -------------------- TIMING -------------------- */
 
-function getProgressPercent(col) {
-  const duration = getDurationMs(col);
+function getProgressPercent(row) {
+  const duration = getDurationMs(row);
   if (!duration || duration <= 0) return 0;
 
-  const elapsed = getElapsedMs(col);
+  const elapsed = getElapsedMs(row);
   return getProgress(duration, elapsed)
 }
 function getProgress(duration, elapsed) {
@@ -139,65 +139,81 @@ function getProgress(duration, elapsed) {
 /* -------------------- EDIT -------------------- */
 
 function applyEdit(event) {
-  if (!schedule?.columns) return;
+  if (!schedule?.rows) return;
 
-  const col = schedule.columns.find(c => c.id === event.columnId);
-  if (!col) return;
+  const row = schedule.rows.find(c => c.id === event.rowId);
+  if (!row) return;
 
-  col.cells = col.cells || {};
-  col.cells[event.key] = event.value;
+  row.cells = row.cells || {};
+  row.cells[event.key] = event.value;
 }
+
+function getActiveIndex() {
+  if (!schedule?.rows?.length) return -1;
+
+  if (activeRowId) {
+    return schedule.rows.findIndex(c => c.id === activeRowId);
+  }
+
+  // Pre-start fallback
+  const now = Date.now();
+  const programStart = schedule.programStart ?? null;
+  if (programStart && now < programStart) return 0;
+
+  return 0;
+}
+
 
 /* -------------------- RENDER -------------------- */
 
 function render() {
-  if (!schedule || !schedule.columns) return;
+  if (!schedule || !schedule.rows) return;
 
   const titleEl = document.getElementById("title");
   const timingEl = document.getElementById("timing");
   const progressEl = document.getElementById("progress");
   const ipContainer = document.getElementById("ipContainer");
-  const tinyIdEl = document.getElementById("tinyId");
+  const pageEl = document.getElementById("tinyId");
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
 
   const now = Date.now();
   const programStart = schedule.programStart ?? null;
 
-  let col = schedule.columns.find(c => c.id === activeColumnId);
+  let row = schedule.rows.find(c => c.id === activeRowId);
 
   // PRE-START MODE
   const isPreStart =
       programStart &&
-      !activeColumnId &&
-      schedule.columns.length > 0 &&
+      !activeRowId &&
+      schedule.rows.length > 0 &&
       now < programStart;
 
   if (isPreStart) {
-    col = schedule.columns[0];
+    row = schedule.rows[0];
   }
 
-  const t = getColumnTiming(col, schedule)
+  const t = getRowTiming(row, schedule)
 
-  if (!col) {
-    tinyIdEl.textContent = "—";
-    titleEl.textContent = "No Active Column";
+  if (!row) {
+    pageEl.textContent = "—";
+    titleEl.textContent = "No Active row";
     timingEl.textContent = "--:--";
     timingEl.className = "timing";
     if (progressEl) progressEl.style.width = "0%";
     return;
   }
-  titleEl.textContent = cleanTxt(col.title) ?? "";
+  titleEl.textContent = cleanTxt(row.title) ?? "";
 
-  const remaining = getRemainingMs(col);
+  const remaining = getRemainingMs(row);
 
-  const notes = col.cells?.["stikkord"]?.value ?? "";
+  const notes = row.cells?.["stikkord"]?.value ?? "";
   console.log(`notes: ${notes}`)
   notesEl.textContent = cleanTxt(notes)
 
 
   titleEl.textContent =
-      cleanTxt(col.title)
+      cleanTxt(row.title)
 
   /* -------- ips -------- */
 
@@ -214,7 +230,7 @@ function render() {
   let foundAny = false;
 
   for (const key of ipKeys) {
-    const value = col.cells[key]?.value;
+    const value = row.cells[key]?.value;
     if (!value) continue;
 
     // Support comma-separated lists too
@@ -234,9 +250,9 @@ function render() {
     ipContainer.appendChild(createIpBox("—"));
   }
 
-  /* -------- Tiny Column ID -------- */
+  /* -------- Page -------- */
 
-  tinyIdEl.textContent = col.id ?? "—";
+  pageEl.textContent = row.page ?? "—";
 
   /* -------- Offset time -------- */
 
@@ -259,8 +275,8 @@ function render() {
   /* -------- Progress -------- */
 
   if (progressEl) {
-    const elapsed = getElapsedMs(col);
-    const duration = col.duration;
+    const elapsed = getElapsedMs(row);
+    const duration = row.duration;
 
     const percent = getProgress(duration, elapsed);
     progressEl.style.width = Math.min(percent, 100) + "%";
@@ -284,10 +300,63 @@ function render() {
   }
 
   if (remaining >= 0) {
-    timingEl.textContent = formatMs(remaining);
+    timingEl.textContent = formatClock(remaining);
     timingEl.classList.add("ontime");
   } else {
-    timingEl.textContent = "-" + formatMs(Math.abs(remaining));
+    timingEl.textContent = "-" + formatClock(Math.abs(remaining));
     timingEl.classList.add("late");
+  }
+
+  renderUpcoming();
+}
+
+function renderUpcoming() {
+  const container = document.getElementById("upcomingContainer");
+  if (!container || !schedule?.rows) return;
+
+  container.innerHTML = "";
+
+  const activeIndex = getActiveIndex();
+  if (activeIndex < 0) return;
+
+  const upcoming = schedule.rows.slice(activeIndex + 1, activeIndex + 7);
+
+  console.log(upcoming)
+
+  for (const row of upcoming) {
+    const rowEl = document.createElement("tr");
+    rowEl.className = "upcoming-row";
+
+    const ipContainer = document.createElement("td");
+    ipContainer.className = "upcoming-ips";
+
+
+    const page = document.createElement("td");
+    page.className = "upcoming-page";
+    page.textContent = cleanTxt(row.page);
+
+    const title = document.createElement("td");
+    title.className = "upcoming-title";
+    title.textContent = cleanTxt(row.title);
+
+    const time = document.createElement("td");
+    time.className = "upcoming-time";
+
+    const absStart = getRowAbsoluteStart(row, schedule);
+    const t = getRowTiming(row, schedule)
+    if (!absStart) {
+      time.textContent = "--:--";
+    } else {
+      const msUntil = absStart - Date.now();
+      time.textContent =
+          msUntil > 0
+              ? formatClock(msUntil)
+              : "-" + formatClock(Math.abs(msUntil));
+    }
+
+    rowEl.appendChild(page)
+    rowEl.appendChild(title);
+    rowEl.appendChild(time);
+    container.appendChild(rowEl);
   }
 }

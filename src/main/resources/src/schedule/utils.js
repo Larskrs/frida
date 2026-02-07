@@ -41,16 +41,16 @@ export function startTicker(delay, callback) {
   loop();
 }
 
-export function getElapsedMs(col) {
-  if (!col.activatedAt) return 0;
-  return Date.now() - col.activatedAt;
+export function getElapsedMs(row) {
+  if (!row.activatedAt) return 0;
+  return Date.now() - row.activatedAt;
 }
 
-export function getRemainingMs(col) {
-  if (!col.activatedAt) return null;
+export function getRemainingMs(row) {
+  if (!row.activatedAt) return null;
 
-  const elapsed = getElapsedMs(col);
-  const duration = getDurationMs(col)
+  const elapsed = getElapsedMs(row);
+  const duration = getDurationMs(row)
   if (!elapsed || !duration) {
     return 0
   }
@@ -84,12 +84,10 @@ export function millisSince(at, from) {
 export function formatClock(ms) {
     const date = new Date(ms);
 
-    // Get time components
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    const seconds = date.getUTCSeconds().toString().padStart(2, '0');
 
-    // Format the time string
     return `${hours}:${minutes}:${seconds}`;
 }
 
@@ -179,43 +177,43 @@ export function createIpBox(txtRaw) {
 }
 
 
-export function getCumulativeOffsetMs(targetCol, schedule) {
+export function getCumulativeOffsetMs(targetrow, schedule) {
     if (!schedule) return 0;
-    if (!targetCol) return 0
+    if (!targetrow) return 0
 
     let sum = 0;
-    for (const col of schedule.columns) {
-        if (col.id === targetCol.id) break;
-        sum += getDurationMs(col);
+    for (const row of schedule.rows) {
+        if (row.id === targetrow.id) break;
+        sum += getDurationMs(row);
     }
     return sum;
 }
 
-export function getColumnAbsoluteStart(col, schedule) {
+export function getRowAbsoluteStart(row, schedule) {
     if (!schedule?.programStart) return null;
 
-    const offset = getCumulativeOffsetMs(col, schedule);
+    const offset = getCumulativeOffsetMs(row, schedule);
     return schedule.programStart + offset;
 }
 
-export function getDurationMs(col) {
-    return Number(col?.duration ?? 0);
+export function getDurationMs(row) {
+    return Number(row?.duration ?? 0);
 }
 
-export function getColumnTiming(col, schedule) {
+export function getRowTiming(row, schedule) {
 
     if (!schedule) return 0
-    if (!col) return 0
+    if (!row) return 0
 
-    const abs = getColumnAbsoluteStart(col, schedule);
-    const duration = getDurationMs(col);
+    const abs = getRowAbsoluteStart(row, schedule);
+    const duration = getDurationMs(row);
 
     if (!abs) return { status: "UNKNOWN", delay: 0, abs: null };
 
     const tolerence = 3000;
 
     const now = Date.now();
-    const activatedAt = col.activatedAt ?? null;
+    const activatedAt = row.activatedAt ?? null;
 
     const elapsed = activatedAt ? now - activatedAt : 0;
     const remaining = activatedAt ? duration - elapsed : duration;
