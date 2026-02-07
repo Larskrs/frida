@@ -10,4 +10,5 @@ data class AppConfig(
     val rundownKey: String = "rundown_key",
     val rundownToken: String = "rundown_token",
     val rundownId: Int = 0,
+    val autoScrollerDefault: Boolean = true,
 )

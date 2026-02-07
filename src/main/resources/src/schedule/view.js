@@ -173,20 +173,16 @@ function render() {
     }
 
     const keys = new Set(["id", "title", "status", "duration", "delay"]);
-    const discovered = [];
+
+    console.log(schedule.columns)
 
     schedule.columns.forEach(col =>
         Object.keys(col.cells || {}).forEach(raw => {
-            const k = cleanTxt(raw);
-            if (!discovered.includes(k)) discovered.push(k);
+            keys.add(cleanTxt(raw))
         })
     );
 
-    discovered.forEach(k => {
-        if (schedule.columns.some(col => col.cells?.[k]?.value != null)) {
-            keys.add(k);
-        }
-    });
+    console.log({keys})
 
     // Header
     const headerRow = document.createElement("tr");

@@ -107,6 +107,52 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
 
     if (arr.isEmpty()) return emptyList()
 
+    val excluded = setOf(
+        "RowID",
+        "Approved",
+        "Floated",
+        "Locked",
+        "Following",
+        "Deleted",
+        "RundownID",
+        "StorySlug",
+        "ActualDuration",
+        "EstimatedDuration",
+        "ScriptHasContent",
+        "Break",
+        "PageNumber",
+        "Position",
+    )
+
+    // -----------------------------
+    // 1. BUILD STABLE ORDERED KEYS
+    // -----------------------------
+    val orderedKeys = LinkedHashSet<String>()
+
+    // collect all keys in natural first-seen order
+    arr.forEach { el ->
+        el.jsonObject.keys.forEach { key ->
+            if (key !in excluded) {
+                orderedKeys += key
+            }
+        }
+    }
+
+    // -----------------------------
+    // 2. REMOVE KEYS EMPTY IN ALL ROWS
+    // -----------------------------
+    val filteredKeys = orderedKeys.filter { key ->
+        arr.any { el ->
+            val v = el.jsonObject[key]?.jsonPrimitive?.contentOrNull
+            !v.isNullOrBlank()
+        }
+    }
+
+    println("Cell order: $filteredKeys")
+
+    // -----------------------------
+    // 3. BUILD COLUMNS USING ORDER
+    // -----------------------------
     return arr.mapIndexed { index, el ->
         val obj = el.jsonObject
 
@@ -117,26 +163,14 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
             obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
                 ?: 0L
 
-        val cells = obj
-            .filterKeys {
-                it !in setOf(
-                    "RowID",
-                    "Approved",
-                    "Floated",
-                    "Locked",
-                    "Following",
-                    "Deleted",
-                    "RundownID",
-                    "StorySlug",
-                    "ActualDuration",
-                    "EstimatedDuration",
-                    "ScriptHasContent",
-                    "Break",
-                    "PageNumber",
-                    "Position",
-                )
+        val cells = LinkedHashMap<String, CellValue>()
+
+        for (key in filteredKeys) {
+            val value = obj[key]?.jsonPrimitive?.contentOrNull
+            if (!value.isNullOrBlank()) {
+                cells[key] = CellValue.Text(value)
             }
-            .mapValues { CellValue.Text(it.value.jsonPrimitive.contentOrNull ?: "") }
+        }
 
         Column(
             id = id,
@@ -146,6 +180,7 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
         )
     }
 }
+
 
 private fun parseTimeToMillis(text: String): Long {
     val parts = text.split(":").mapNotNull { it.toLongOrNull() }
