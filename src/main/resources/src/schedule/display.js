@@ -191,7 +191,8 @@ function render() {
 
   const remaining = getRemainingMs(col);
 
-  const notes = col.cells["stikkord"]?.value;
+  const notes = col.cells?.["stikkord"]?.value ?? "";
+  console.log(`notes: ${notes}`)
   notesEl.textContent = cleanTxt(notes)
 
 

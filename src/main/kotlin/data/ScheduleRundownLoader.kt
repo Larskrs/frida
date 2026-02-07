@@ -166,10 +166,8 @@ fun loadColumnsFromRundown(rundownId: Int): List<Column> {
         val cells = LinkedHashMap<String, CellValue>()
 
         for (key in filteredKeys) {
-            val value = obj[key]?.jsonPrimitive?.contentOrNull
-            if (!value.isNullOrBlank()) {
-                cells[key] = CellValue.Text(value)
-            }
+            val value = obj[key]?.jsonPrimitive?.contentOrNull ?: ""
+            cells[key] = CellValue.Text(value)
         }
 
         Column(

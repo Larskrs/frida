@@ -174,14 +174,13 @@ function render() {
 
     const keys = new Set(["id", "title", "status", "duration", "delay"]);
 
-    console.log(schedule.columns)
-
     schedule.columns.forEach(col =>
         Object.keys(col.cells || {}).forEach(raw => {
             keys.add(cleanTxt(raw))
         })
     );
 
+    console.log(schedule.columns?.[0])
     console.log({keys})
 
     // Header
