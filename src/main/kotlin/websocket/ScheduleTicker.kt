@@ -1,5 +1,6 @@
 package com.example.websocket
 
+import com.example.config.ConfigManager
 import com.example.data.ScheduleStore
 import com.example.nextFullSecond
 import kotlinx.coroutines.*
@@ -9,6 +10,7 @@ import kotlin.math.max
 object ScheduleTicker {
 
     private var job: Job? = null
+    private var config = ConfigManager.loadOrCreate()
 
     fun start(scope: CoroutineScope) {
         if (job != null) return // prevent duplicates
@@ -42,6 +44,10 @@ object ScheduleTicker {
 
     private suspend fun tick() {
         var schedule = ScheduleStore.get()
+
+        if (!config.autoScrollerDefault) {
+            return
+        }
 
         val now = Instant.now().toEpochMilli()
         val programStart = schedule.programStart ?: return
