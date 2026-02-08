@@ -1,10 +1,15 @@
 package com.example.websocket
 
+import com.example.config.ConfigManager
+import com.example.data.CellValue
+import com.example.data.Row
+import com.example.data.Schedule
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import com.example.data.ScheduleStore
+import com.example.data.loadColumnsFromRundown
 import com.example.nextFullSecond
 import java.time.Instant
 
@@ -53,6 +58,29 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     println("ATTEMPTING TO RELOAD SCHEDULE")
 
                     broadcast(ScheduleEvent.Load(s))
+                }
+
+                is ScheduleEvent.ChangeSchedule -> {
+
+                    try {
+                        val rows = loadColumnsFromRundown(rundownId = event.rundownId)
+
+                        println("LOADING A NEW SCHEDULE FROM RUNDOWN ${event.rundownId}")
+                        print("${rows.size} rows loaded")
+
+                        ScheduleStore.rundownId = event.rundownId
+
+                        ScheduleStore.updateRows(rows)
+                        val s = ScheduleStore.get()
+                        s.activeRowId = null
+                        s.programStart = Instant.now().toEpochMilli()
+                        ScheduleStore.set(s)
+                        broadcast(ScheduleEvent.Load(ScheduleStore.get()))
+
+                    } catch (e: Exception) {
+                        println("Failed to load schedule from RundownCreator ${e.message}")
+                    }
+
                 }
 
 

@@ -10,6 +10,9 @@ sealed class ScheduleEvent {
     data class Load(val schedule: Schedule) : ScheduleEvent()
 
     @Serializable
+    data class ChangeSchedule(val rundownId: Int) : ScheduleEvent()
+
+    @Serializable
     object ReloadSchedule : ScheduleEvent()
 
     @Serializable

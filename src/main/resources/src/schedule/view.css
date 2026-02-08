@@ -111,7 +111,8 @@ button:active {
 }
 
 table {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     border-collapse: collapse;
     font-size: 14px;
 }

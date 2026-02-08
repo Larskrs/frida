@@ -100,6 +100,18 @@ rundownReload?.addEventListener("click", () => {
 })
 
 
+document.getElementById("select-rundown-load")
+    .addEventListener("selected", e => {
+        console.log("User picked:", e.detail);
+        console.log("Attempting to lad ")
+
+        ws.send(JSON.stringify({
+            type: "com.example.websocket.ScheduleEvent.ChangeSchedule",
+            rundownId: e.detail.rundownId
+        }))
+    });
+
+
 /* -------------------- TIMING -------------------- */
 
 // Duration is stored in cells["duration"].value in SECONDS
@@ -125,6 +137,7 @@ document.addEventListener("keydown", e => {
     if (e.key === "ArrowDown" || e.key === " ") {
         e.preventDefault()
         setActiveIndex(idx + 1);
+
     }
 
     if (e.key === "ArrowUp") {
@@ -172,11 +185,14 @@ function render() {
             "Program Start: " + formatClock(schedule.programStart);
     }
 
+    const hiddenKeys = new Set(["Break"]);
     const keys = new Set(["page", "title", "status", "duration", "delay"]);
 
     schedule.rows.forEach(row =>
         Object.keys(row.cells || {}).forEach(raw => {
-            keys.add(cleanTxt(raw))
+            if (!hiddenKeys.has(cleanTxt(raw))) {
+                keys.add(cleanTxt(raw))
+            }
         })
     );
 
@@ -218,9 +234,14 @@ function render() {
     // Rows
     schedule.rows.forEach(row => {
         const rowEl = document.createElement("tr");
+        rowEl.id = row.id
 
         if (row.id === activeRowId) {
             rowEl.classList.add("active");
+        }
+
+        if (row.cells?.["Break"].value == 1) {
+            rowEl.classList.add("break")
         }
 
         rowEl.addEventListener("click", () => setActive(row.id));

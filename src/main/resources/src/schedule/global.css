@@ -1,0 +1,26 @@
+:root {
+    --bg: #0a0a0a;
+    --panel: #111111;
+    --border: #2a2a2a;
+    --text: #e6e9ef;
+    --muted: #8b93a1;
+    --accent: #4c6fff;
+
+    --green: #4cff74;
+    --yellow: #fff44f;
+    --red: #ff4c4c;
+}
+
+.upcoming { --status-color: var(--yellow); }
+.late { --status-color: var(--red); }
+.ontime { --status-color: var(--green); }
+.early { --status-color: #fff44f; }
+.break {
+    background: #0b1c5e !important;
+}
+.break td {
+    background: #0b1c5e !important;
+}
+.break:hover td {
+    background: #102c9f !important;
+}

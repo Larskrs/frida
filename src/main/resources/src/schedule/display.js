@@ -163,7 +163,6 @@ function getActiveIndex() {
   return 0;
 }
 
-
 /* -------------------- RENDER -------------------- */
 
 function render() {
@@ -176,6 +175,7 @@ function render() {
   const pageEl = document.getElementById("tinyId");
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
+  const detailsContainer = document.getElementById("details")
 
   const now = Date.now();
   const programStart = schedule.programStart ?? null;
@@ -319,7 +319,7 @@ function renderUpcoming() {
   const activeIndex = getActiveIndex();
   if (activeIndex < 0) return;
 
-  const upcoming = schedule.rows.slice(activeIndex + 1, activeIndex + 7);
+  const upcoming = schedule.rows.slice(activeIndex);
 
   console.log(upcoming)
 
@@ -338,6 +338,10 @@ function renderUpcoming() {
     const title = document.createElement("td");
     title.className = "upcoming-title";
     title.textContent = cleanTxt(row.title);
+
+    if (row.cells?.["Break"]?.value == 1) {
+      rowEl.className = "upcoming-row break"
+    }
 
     const time = document.createElement("td");
     time.className = "upcoming-time";

@@ -15,12 +15,14 @@ object ScheduleStore {
         state.set(newState)
     }
 
+    var rundownId = ConfigManager.loadOrCreate().rundownId
+
     fun loadInitial(): Schedule {
         return try {
             Schedule(
                 programStart = nextFullSecond(),
                 activeRowId = null,
-                rows = loadColumnsFromRundown(ConfigManager.loadOrCreate().rundownId)
+                rows = loadColumnsFromRundown(rundownId)
             )
         } catch (e: Exception) {
             println("CSV load failed, using fallback: ${e.message}")
@@ -48,7 +50,7 @@ object ScheduleStore {
         val current = state.get()
 
         val newColumns = try {
-            loadColumnsFromRundown(ConfigManager.loadOrCreate().rundownId)
+            loadColumnsFromRundown(rundownId)
         } catch (e: Exception) {
             println("Column update failed: ${e.message}")
             return
@@ -67,6 +69,30 @@ object ScheduleStore {
                 newCol.copy(
                     activatedAt = old.activatedAt
                     // add more runtime fields here if you have them
+                )
+            }
+        }
+
+        val updatedSchedule = current.copy(
+            rows = merged,
+        )
+
+        state.set(updatedSchedule)
+    }
+
+    fun updateRows(newRows: List<Row>) {
+        val current = state.get()
+
+        val oldById = current.rows.associateBy { it.id }
+
+        val merged = newRows.map { newRow ->
+            val old = oldById[newRow.id]
+
+            if (old == null) {
+                newRow
+            } else {
+                newRow.copy(
+                    activatedAt = old.activatedAt
                 )
             }
         }
