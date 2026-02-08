@@ -10,7 +10,7 @@ import {
   formatMs,
   getElapsedMs,
   getDurationMs,
-  getCumulativeOffsetMs, startTicker, createIpBox
+  getCumulativeOffsetMs, startTicker, createIpBox, getScheduleTiming, formatTimeOfDayClock
 } from "./utils.js?v=1";
 
 let ws = null;
@@ -175,7 +175,6 @@ function render() {
   const pageEl = document.getElementById("tinyId");
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
-  const detailsContainer = document.getElementById("details")
 
   const now = Date.now();
   const programStart = schedule.programStart ?? null;
@@ -308,6 +307,7 @@ function render() {
   }
 
   renderUpcoming();
+  renderDetails();
 }
 
 function renderUpcoming() {
@@ -363,4 +363,22 @@ function renderUpcoming() {
     rowEl.appendChild(time);
     container.appendChild(rowEl);
   }
+}
+
+function renderDetails () {
+  const detailsContainer = document.getElementById("details")
+  const finishedEl = document.getElementById("finished")
+  const finishedSummaryEl = document.getElementById("finished-summary")
+
+
+  const st = getScheduleTiming(schedule)
+
+  finishedSummaryEl.textContent = "FINISHED AT: " + formatTimeOfDayClock(st.programFinish)
+  const isFinished = schedule.rows.length -2 < activeRowId
+
+  finishedEl.style.animation = isFinished ? "finished 3s ease-in-out forwards" : "none"
+  finishedEl.style.visibility = isFinished ? "visible" : "hidden"
+  finishedSummaryEl.style.visibility = isFinished ? "visible" : "hidden"
+
+  detailsContainer.textContent = formatTimeOfDayClock(st.programFinish)
 }

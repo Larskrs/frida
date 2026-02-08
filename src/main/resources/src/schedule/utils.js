@@ -90,6 +90,16 @@ export function formatClock(ms) {
 
     return `${hours}:${minutes}:${seconds}`;
 }
+export function formatTimeOfDayClock(ms) {
+    const date = new Date(ms);
+
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+
+    return `${hours}:${minutes}:${seconds}`;
+}
+
 
 const imageMap = {
     k1: "/img/k1.png",
@@ -244,5 +254,78 @@ export function getRowTiming(row, schedule) {
       remaining,
       duration,
       delay
+    };
+}
+
+export function getScheduleTiming(schedule) {
+    if (!schedule?.rows?.length) {
+        return {
+            programFinish: 0,
+            status: "finished",
+            delay: 0,
+            remaining: 0
+        };
+    }
+
+    const now = Date.now();
+
+    // ---- LOCAL NORMALIZATION ----
+    let programStart = schedule.programStart ?? now;
+
+    // If programStart is a string or HH:mm:ss style, force local
+    if (typeof programStart === "string") {
+        const d = new Date();
+        const [h, m, s = 0] = programStart.split(":").map(Number);
+        d.setHours(h, m, s, 0);
+        programStart = d.getTime();
+    }
+
+    // Total duration
+    const totalDuration = schedule.rows.reduce((acc, row) => {
+        const dur = getDurationMs(row);
+        return acc + (dur || 0);
+    }, 0);
+
+    const programFinish = programStart + totalDuration;
+    const remaining = programFinish - now;
+
+    let status = "ontime";
+    let delay = 0;
+
+    if (remaining <= 0) {
+        status = "finished";
+        delay = Math.abs(remaining);
+    } else {
+        const elapsedSinceStart = now - programStart;
+        const expectedProgress = Math.min(elapsedSinceStart, totalDuration);
+
+        let actualProgress = 0;
+        const activeIndex = schedule.rows.findIndex(
+            r => r.id === schedule.activeRowId
+        );
+
+        if (activeIndex >= 0) {
+            for (let i = 0; i < activeIndex; i++) {
+                actualProgress += getDurationMs(schedule.rows[i]) || 0;
+            }
+
+            const activeRow = schedule.rows[activeIndex];
+            if (activeRow?.activatedAt) {
+                actualProgress += now - activeRow.activatedAt;
+            }
+        }
+
+        delay = actualProgress - expectedProgress;
+
+        if (delay > 1000) status = "late";
+        else if (delay < -1000) status = "early";
+        else status = "ontime";
+    }
+
+    return {
+        programFinish,
+        status,
+        delay,
+        remaining: Math.max(0, remaining)
     };
 }
