@@ -176,10 +176,21 @@ function render() {
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
 
+  const bodyEl = document.getElementById("body")
+  bodyEl.addEventListener("click", () => {
+    if (bodyEl.requestFullscreen) {
+      bodyEl.requestFullscreen();
+    } else if (bodyEl.webkitRequestFullscreen) { /* Safari */
+      bodyEl.webkitRequestFullscreen();
+    }
+  })
+
   const now = Date.now();
   const programStart = schedule.programStart ?? null;
 
   let row = schedule.rows.find(c => c.id === activeRowId);
+
+  const isFinished = isScheduleFinished(activeRowId, schedule)
 
   // PRE-START MODE
   const isPreStart =
@@ -279,6 +290,7 @@ function render() {
 
     const percent = getProgress(duration, elapsed);
     progressEl.style.width = Math.min(percent, 100) + "%";
+    progressEl.style.visibility = isFinished ? "hidden" : "visible"
 
     if (remaining < 0) {
       progressEl.classList.add("late");
@@ -319,7 +331,7 @@ function renderUpcoming() {
   const activeIndex = getActiveIndex();
   if (activeIndex < 0) return;
 
-  const upcoming = schedule.rows.slice(activeIndex);
+  const upcoming = schedule.rows.slice(activeIndex+1, activeIndex + 16);
 
   console.log(upcoming)
 
@@ -370,15 +382,24 @@ function renderDetails () {
   const finishedEl = document.getElementById("finished")
   const finishedSummaryEl = document.getElementById("finished-summary")
 
-
   const st = getScheduleTiming(schedule)
 
-  finishedSummaryEl.textContent = "FINISHED AT: " + formatTimeOfDayClock(st.programFinish)
-  const isFinished = schedule.rows.length -2 < activeRowId
+  const isFinished = isScheduleFinished(activeRowId, schedule)
+
+  finishedSummaryEl.textContent = "Varighet: " + formatClock(Date.now() - schedule.programStart)
 
   finishedEl.style.animation = isFinished ? "finished 3s ease-in-out forwards" : "none"
-  finishedEl.style.visibility = isFinished ? "visible" : "hidden"
+  finishedEl.style.display = isFinished ? "flex" : "none"
   finishedSummaryEl.style.visibility = isFinished ? "visible" : "hidden"
 
-  detailsContainer.textContent = formatTimeOfDayClock(st.programFinish)
+  detailsContainer.textContent = formatTimeOfDayClock(Date.now())
+}
+
+function isScheduleFinished (activeRowId, schedule) {
+  const activeRow = schedule.rows?.find((r) => r.id === activeRowId)
+
+  const st = getScheduleTiming(schedule)
+  const t = getRowTiming(activeRow, schedule)
+
+  return schedule.rows.length-1 <= getActiveIndex() && t.remaining < 0
 }
