@@ -19,10 +19,19 @@ const ws = new WebSocket("ws://" + host + "/schedule/ws");
 let schedule = null;
 let activeRowId = null;
 
+/* ---------------- Static Elements --------- */
+
+    const table = document.getElementById("scheduleTable");
+    const tableWrapper = document.getElementById("schedulewrapper")
+    const windowNoSchedule = document.getElementById("window-no-shedule")
+    const windowDisconnected = document.getElementById("window-disconnected")
+
 /* -------------------- WS -------------------- */
 
 ws.onopen = (e) => {
     console.log(e);
+
+    windowDisconnected.style.display = "none"
 };
 
 ws.onmessage = e => {
@@ -62,6 +71,16 @@ ws.onmessage = e => {
             break;
     }
 };
+
+ws.onclose = e => {
+
+    console.log(e)
+
+    windowDisconnected.style.display = "flex"
+    windowNoSchedule.style.display = "none"
+    tableWrapper.style.display = "none"
+
+}
 
 
 const startInput = document.getElementById("program-start-input");
@@ -162,10 +181,17 @@ function setActive(rowId) {
 /* -------------------- RENDER -------------------- */
 
 function render() {
-    const table = document.getElementById("scheduleTable");
     table.innerHTML = "";
 
     if (!schedule) return;
+
+    if (schedule?.rows.length <= 0) {
+        windowNoSchedule.style.display = "flex"
+        tableWrapper.style.display = "none"
+    } else {
+        windowNoSchedule.style.display = "none"
+        tableWrapper.style.display = "flex"
+    }
 
     const activeLabel = document.getElementById("active-row");
     const activeItem = schedule.rows.find(c => c.id === activeRowId);

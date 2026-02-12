@@ -1,13 +1,13 @@
 :root {
     --bg: #0a0a0a;
     --panel: #111111;
-    --border: #2a2a2a;
+    --border: #3e3e3e;
     --text: #e6e9ef;
     --muted: #8b93a1;
     --accent: #4c6fff;
 
     --green: #4cff74;
-    --yellow: #ffd54a;
+    --yellow: #ffa54a;
     --red: #ff4c4c;
 }
 
@@ -24,6 +24,15 @@ body {
     margin: 0;
 }
 
+/* ----------------- HEADER ------------------- */
+
+.header-name-row {
+    display: flex;
+    gap: 8px;
+}
+
+
+
 /* ------------------ LAYOUT ------------------ */
 
 .container {
@@ -37,9 +46,6 @@ body {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     padding: 18px 22px;
-}
-.panel:has(table) {
-    padding: 0px;
 }
 
 /* ------------------ HEADINGS ------------------ */
@@ -115,16 +121,17 @@ table {
     max-width: 100%;
     border-collapse: collapse;
     font-size: 14px;
+    border: 1px solid var(--border);
 }
 
 th {
     text-align: left;
     padding: 12px 10px;
-    color: var(--muted);
+    color: var(--bg);
     font-weight: 500;
     border-bottom: 1px solid var(--border);
     border-right: 1px solid var(--border);
-    background: #212121;
+    background: var(--accent);
 }
 
 td {
@@ -138,7 +145,7 @@ tr:last-child td {
     border-bottom: none;
 }
 tr:nth-child(odd) td {
-    background: #151515;
+    background: #191919;
 }
 
 th:last-child,
@@ -147,7 +154,8 @@ td:last-child {
 }
 
 tr:hover td {
-    background: #161616;
+    background: #2a2a2a;
+    color: var(--text)
 }
 .active:hover td {
     background: rgba(82, 255, 117, 0.2);
@@ -163,10 +171,16 @@ tr:hover td {
     outline: 1px solid var(--red);
 }
 .active:has(.late) td {
-    background: rgba(255, 82, 82, 0.08);
+    background: rgba(255, 82, 82, 0.15);
 }
 .active td {
-    background: rgba(82, 255, 117, 0.08);
+    background: rgba(82, 255, 117, 0.15);
+}
+.active:has(.early) {
+    outline: 1px solid var(--yellow);
+}
+.active:has(.early) td {
+    background: rgba(255, 246, 82, 0.15);
 }
 .active td:first-child {
     color: var(--green)
