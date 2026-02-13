@@ -10,7 +10,7 @@ import {
   formatMs,
   getElapsedMs,
   getDurationMs,
-  getCumulativeOffsetMs, startTicker, createIpBox, getScheduleTiming, formatTimeOfDayClock
+  getCumulativeOffsetMs, startTicker, createIpBox
 } from "./utils.js?v=1";
 
 let ws = null;
@@ -175,22 +175,12 @@ function render() {
   const pageEl = document.getElementById("tinyId");
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
-
-  const bodyEl = document.getElementById("body")
-  bodyEl.addEventListener("click", () => {
-    if (bodyEl.requestFullscreen) {
-      bodyEl.requestFullscreen();
-    } else if (bodyEl.webkitRequestFullscreen) { /* Safari */
-      bodyEl.webkitRequestFullscreen();
-    }
-  })
+  const detailsContainer = document.getElementById("details")
 
   const now = Date.now();
   const programStart = schedule.programStart ?? null;
 
   let row = schedule.rows.find(c => c.id === activeRowId);
-
-  const isFinished = isScheduleFinished(activeRowId, schedule)
 
   // PRE-START MODE
   const isPreStart =
@@ -290,7 +280,6 @@ function render() {
 
     const percent = getProgress(duration, elapsed);
     progressEl.style.width = Math.min(percent, 100) + "%";
-    progressEl.style.visibility = isFinished ? "hidden" : "visible"
 
     if (remaining < 0) {
       progressEl.classList.add("late");
@@ -319,7 +308,6 @@ function render() {
   }
 
   renderUpcoming();
-  renderDetails();
 }
 
 function renderUpcoming() {
@@ -331,7 +319,7 @@ function renderUpcoming() {
   const activeIndex = getActiveIndex();
   if (activeIndex < 0) return;
 
-  const upcoming = schedule.rows.slice(activeIndex+1, activeIndex + 16);
+  const upcoming = schedule.rows.slice(activeIndex);
 
   console.log(upcoming)
 
@@ -375,31 +363,4 @@ function renderUpcoming() {
     rowEl.appendChild(time);
     container.appendChild(rowEl);
   }
-}
-
-function renderDetails () {
-  const detailsContainer = document.getElementById("details")
-  const finishedEl = document.getElementById("finished")
-  const finishedSummaryEl = document.getElementById("finished-summary")
-
-  const st = getScheduleTiming(schedule)
-
-  const isFinished = isScheduleFinished(activeRowId, schedule)
-
-  finishedSummaryEl.textContent = "Varighet: " + formatClock(Date.now() - schedule.programStart)
-
-  finishedEl.style.animation = isFinished ? "finished 3s ease-in-out forwards" : "none"
-  finishedEl.style.display = isFinished ? "flex" : "none"
-  finishedSummaryEl.style.visibility = isFinished ? "visible" : "hidden"
-
-  detailsContainer.textContent = formatTimeOfDayClock(Date.now())
-}
-
-function isScheduleFinished (activeRowId, schedule) {
-  const activeRow = schedule.rows?.find((r) => r.id === activeRowId)
-
-  const st = getScheduleTiming(schedule)
-  const t = getRowTiming(activeRow, schedule)
-
-  return schedule.rows.length-1 <= getActiveIndex() && t.remaining < 0
 }

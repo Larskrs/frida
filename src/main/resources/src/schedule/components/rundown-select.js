@@ -3,6 +3,8 @@ class RundownSelect extends HTMLElement {
         super();
         this.rundowns = [];
         this.loaded = false;
+
+        this.loadRundowns().then(r => console.log("Loaded rundowns"))
     }
 
     connectedCallback() {
@@ -67,11 +69,23 @@ class RundownSelect extends HTMLElement {
         this.select.addEventListener("change", () => this.handleChange());
     }
 
+    getApiBase() {
+        const url = new URL(window.location.href);
+
+        // Example: dev override
+        if (url.searchParams.has("_ijt")) {
+            return "http://localhost";
+        }
+
+        return url.origin; // safest default
+    }
+
+
     async loadRundowns() {
         if (this.loaded) return;
 
         try {
-            const resp = await fetch("/api/rundowns");
+            const resp = await fetch(this.getApiBase() + "/api/rundowns");
             this.rundowns = await resp.json();
             this.loaded = true;
             this.populate();
@@ -82,8 +96,21 @@ class RundownSelect extends HTMLElement {
     }
 
     populate() {
-        this.select.innerHTML = `<option disabled selected>Select Rundown</option>`;
+        if (!this.rundowns?.length) {
+            this.select.innerHTML = `<option disabled>No rundowns</option>`;
+            return;
+        }
 
+        // 1. SORT NEWEST FIRST
+        this.rundowns.sort((a, b) => {
+            const da = new Date(a.updatedAt ?? a.date ?? 0).getTime();
+            const db = new Date(b.updatedAt ?? b.date ?? 0).getTime();
+            return db - da; // newest first
+        });
+
+        this.select.innerHTML = "";
+
+        // 2. BUILD OPTIONS
         this.rundowns.forEach(r => {
             const opt = document.createElement("option");
 
@@ -95,7 +122,18 @@ class RundownSelect extends HTMLElement {
 
             this.select.appendChild(opt);
         });
+
+        // 3. AUTO SELECT FIRST (NEWEST)
+        const newest = this.rundowns[this.rundowns.length - 1];
+        if (newest) {
+            const newestId = newest.rundownId ?? newest.RundownID;
+            this.select.value = newestId;
+        }
+
+        // 4. TRIGGER EVENT
+        this.handleChange();
     }
+
 
     handleChange() {
         const id = this.select.value;

@@ -1,0 +1,30 @@
+#context-menu {
+    position: fixed;
+    background: #111;
+    border: 1px solid #333;
+    padding: 4px 4px;
+    display: none;
+    z-index: 9999;
+    min-width: 180px;
+    font-family: Roboto, sans-serif;
+    border-radius: 8px;
+}
+
+#context-menu button {
+    width: 100%;
+    background: none;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#context-menu button:hover {
+    background: #333;
+}
+
+#context-menu .danger {
+    color: #ff4c4c;
+}

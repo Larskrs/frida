@@ -1,14 +1,18 @@
 :root {
-    --bg: #0a0a0a;
-    --panel: #111111;
-    --border: #3e3e3e;
-    --text: #e6e9ef;
-    --muted: #8b93a1;
-    --accent: #4c6fff;
+    --bg: #0b0b0c;
+    --panel: #131315;
+    --panel-2: #18181b;
+    --border: #2a2a2e;
+
+    --text: #e8e8ee;
+    --muted: #8c8f99;
+    --accent: #5b7cff;
 
     --green: #4cff74;
-    --yellow: #ffa54a;
-    --red: #ff4c4c;
+    --yellow: #ffb454;
+    --red: #ff5c5c;
+
+    --radius: 10px;
 }
 
 /* ------------------ BASE ------------------ */
@@ -22,16 +26,8 @@ body {
     background: var(--bg);
     color: var(--text);
     margin: 0;
+    line-height: 1.4;
 }
-
-/* ----------------- HEADER ------------------- */
-
-.header-name-row {
-    display: flex;
-    gap: 8px;
-}
-
-
 
 /* ------------------ LAYOUT ------------------ */
 
@@ -39,20 +35,21 @@ body {
     margin: auto;
     display: flex;
     flex-direction: column;
-    gap: 0;
 }
 
 .panel {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
-    padding: 18px 22px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ------------------ HEADINGS ------------------ */
 
 h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 600;
 }
 
@@ -63,28 +60,29 @@ h2, h3 {
     font-size: 14px;
 }
 
-/* ------------------ INPUT / BUTTON ------------------ */
+/* ------------------ CONTROLS ------------------ */
 
 .controls {
     display: flex;
     gap: 8px;
     align-items: center;
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
 label {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 14px;
+    padding-top: 12px;
 }
 
 input {
     padding: 8px 10px;
     font-size: 14px;
-    background: #0c0c0c;
+    background: var(--panel-2);
     border: 1px solid var(--border);
     color: white;
+    border-radius: 6px;
     outline: none;
-    border-radius: 0;
 }
 
 input:focus {
@@ -94,20 +92,17 @@ input:focus {
 button {
     padding: 8px 14px;
     font-size: 13px;
-    border-radius: 0;
+    border-radius: 6px;
     border: 1px solid var(--border);
     cursor: pointer;
-    background: #151515;
+    background: var(--panel-2);
     color: white;
-    transition: background 0.1s;
+    transition: background 0.12s, border-color 0.12s;
 }
 
 button:hover {
-    background: #1e1e1e;
-}
-
-button:active {
-    background: #0f0f0f;
+    background: #202024;
+    border-color: #3a3a40;
 }
 
 /* ------------------ TABLE ------------------ */
@@ -117,48 +112,41 @@ button:active {
 }
 
 table {
-    width: auto;
-    max-width: 100%;
-    border-collapse: collapse;
+    width: fit-content;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 14px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--panel);
 }
 
 th {
     text-align: left;
-    padding: 12px 10px;
-    color: var(--bg);
+    padding: 12px;
     font-weight: 500;
     border-bottom: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    background: var(--accent);
+    background: #1c1c21;
+    color: var(--muted);
 }
 
 td {
-    padding: 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    background: #111111;
+    background: var(--panel);
 }
 
 tr:last-child td {
     border-bottom: none;
 }
-tr:nth-child(odd) td {
-    background: #191919;
-}
 
-th:last-child,
-td:last-child {
-    border-right: none;
+tr:nth-child(odd) td {
+    background: var(--panel-2);
 }
 
 tr:hover td {
-    background: #2a2a2a;
-    color: var(--text)
-}
-.active:hover td {
-    background: rgba(82, 255, 117, 0.2);
+    background: #222228;
 }
 
 /* ------------------ STATES ------------------ */
@@ -167,32 +155,31 @@ tr:hover td {
     outline: 1px solid var(--green);
     outline-offset: -1px;
 }
+
+.active td {
+    background: rgba(76, 255, 116, 0.08);
+}
+
 .active:has(.late) {
-    outline: 1px solid var(--red);
+    outline-color: var(--red);
 }
 .active:has(.late) td {
-    background: rgba(255, 82, 82, 0.15);
+    background: rgba(255, 92, 92, 0.08);
 }
-.active td {
-    background: rgba(82, 255, 117, 0.15);
-}
+
 .active:has(.early) {
-    outline: 1px solid var(--yellow);
+    outline-color: var(--yellow);
 }
 .active:has(.early) td {
-    background: rgba(255, 246, 82, 0.15);
+    background: rgba(255, 180, 84, 0.08);
 }
-.active td:first-child {
-    color: var(--green)
-}
-.active:has(.late) td:first-child {
-    color: var(--red)
-}
+
+/* Status text colors */
 
 .upcoming { color: var(--yellow); }
 .late { color: var(--red); }
 .ontime { color: var(--green); }
-.early { color: #fff44f; }
+.early { color: #ffe66a; }
 
 /* ------------------ RESPONSIVE ------------------ */
 

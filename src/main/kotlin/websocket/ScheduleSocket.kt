@@ -30,4 +30,9 @@ sealed class ScheduleEvent {
         val rowId: Int,
         var activatedAt: Long =0,
     ) : ScheduleEvent()
+
+    @Serializable
+    data class StartProgramAtRow(
+        val rowId: Int,
+    ) : ScheduleEvent()
 }

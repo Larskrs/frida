@@ -96,7 +96,6 @@ export function formatTimeOfDayClock(ms) {
     return date.toLocaleTimeString()
 }
 
-
 const imageMap = {
     k1: "/img/k1.png",
     k2: "/img/k2.png",
@@ -252,6 +251,8 @@ export function getRowTiming(row, schedule) {
       delay
     };
 }
+
+
 
 export function getScheduleTiming(schedule) {
     if (!schedule?.rows?.length) {

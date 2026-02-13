@@ -18,8 +18,8 @@
         }
 
         .strip {
-            max-height: 100px;
-            min-height: 100px;
+            max-height: 90px;
+            min-height: 90px;
             height: 80px;
             display: flex;
             flex-direction: row;
@@ -29,10 +29,9 @@
             background: #000;
             border: 1px solid #333;
             border-bottom: none;
-            margin-bottom: 0px ;
+            margin-bottom: 16px ;
             padding: 6px 24px 12px 16px;
             position: relative;
-            overflow: hidden;
         }
 
         .ip-container {
@@ -142,7 +141,9 @@
             border-collapse: collapse;
             flex-direction: column;
             gap: 6px;
+            margin-top: 16px;
             background: #050505;
+            border: 0px solid #222;
             overflow: hidden;
         }
 
@@ -150,13 +151,12 @@
             gap: 32px;
             align-items: center;
             border: 1px solid #333;
-            border-top: none;
             background: #000;
             padding: 8px 24px 8px 16px;
             font-size: 32px;
             color: #ccc;
             min-height: 50px;
-            height: 75px;
+            height: 67px;
         }
         .upcoming-row:nth-child(even) {
             background: #0f0f0f;
@@ -195,15 +195,12 @@
         }
 
         .details {
-            height: 150px;
+            height: 406px;
             background: #000;
-            border: #2a2a2a 1px solid;
             width: 100%;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: fixed;
-            bottom: 0;
         }
 
         .evs {
@@ -218,86 +215,9 @@
             background: #4cff74;
         }
 
-        .finished {
-            position: absolute;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-
-            height: 100%;
-            width: 100%;
-
-            font-size: 42px;
-            font-weight: 700;
-            letter-spacing: 4px;
-
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%) scale(1.25);
-        }
-        .finished-summary {
-            position: absolute;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-
-            height: 100%;
-            width: 50%;
-
-            font-size: 42px;
-            font-weight: 700;
-            letter-spacing: 4px;
-
-            top: 0;
-            right: 25%;
-            transform: translateX(50%) scale(1);
-            z-index: 0;
-
-            color: var(--green);
-        }
-
-
-        @keyframes finished {
-            0% {
-                background: #000;
-                color: black;
-                width: 100%;
-                transform: translateX(-50%) scale(1.25);
-            }
-
-            /* EXPAND */
-            40% {
-                background: var(--green);
-                color: black;
-                width: 100%;
-                transform: translateX(-50%) scale(1);
-            }
-
-            /* WAIT */
-            70% {
-                background: var(--green);
-                color: black;
-                width: 100%;
-                transform: translateX(-50%) scale(1);
-            }
-
-            /* PUSH LEFT */
-            100% {
-                width: 50%;
-                transform: translateX(-100%) scale(1);
-                background: var(--green);
-                color: black;
-            }
-        }
-
-
     </style>
 </head>
-<body id="body">
+<body>
 <div class="strip">
     <div class="row">
         <div id="ipContainer" class="ip-container"></div>
@@ -311,10 +231,6 @@
     </div>
     <div id="progress" class="progress"></div>
     <div class="progressBG"></div>
-    <div class="finished-summary" id="finished-summary"></div>
-    <div class="finished" id="finished">
-        SENDING FERDIG
-    </div>
 </div>
 
 <div id="upcomingContainer" class="upcoming-container"></div>

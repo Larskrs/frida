@@ -22,9 +22,13 @@ let activeRowId = null;
 /* ---------------- Static Elements --------- */
 
     const table = document.getElementById("scheduleTable");
-    const tableWrapper = document.getElementById("schedulewrapper")
+    const tableWrapper = document.getElementById("schedule-wrapper")
     const windowNoSchedule = document.getElementById("window-no-shedule")
     const windowDisconnected = document.getElementById("window-disconnected")
+
+import "./components/contextMenu.js"
+import {addMenuItem, contextMenu} from "./components/contextMenu.js";
+
 
 /* -------------------- WS -------------------- */
 
@@ -49,6 +53,14 @@ ws.onmessage = e => {
             schedule = event.schedule;
             activeRowId = schedule?.activeRowId ?? null;
             console.log(schedule)
+
+            if (schedule?.rows.length <= 0) {
+                windowNoSchedule.style.display = "flex"
+                tableWrapper.style.display = "none"
+            } else {
+                windowNoSchedule.style.display = "none"
+                tableWrapper.style.display = "flex"
+            }
             render();
             break;
 
@@ -145,6 +157,27 @@ function applyEdit(event) {
     row.cells[event.key] = event.value;
 }
 
+function openContextMenu(x, y, rowId) {
+    contextMenu.innerHTML = "";
+
+    addMenuItem("Start Program Here", () => startHere(rowId));
+
+    contextMenu.style.left = x + "px";
+    contextMenu.style.top = y + "px";
+    contextMenu.style.display = "block";
+}
+
+function startHere(rowId) {
+    const row = schedule.rows.find(r => r.id === rowId);
+    if (!row) {alert("Could not find the rowId, try refreshing the page or contact support."); return}
+
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.StartProgramAtRow",
+        rowId
+    }));
+}
+
+
 /* -------------------- INPUT -------------------- */
 
 document.addEventListener("keydown", e => {
@@ -184,14 +217,6 @@ function render() {
     table.innerHTML = "";
 
     if (!schedule) return;
-
-    if (schedule?.rows.length <= 0) {
-        windowNoSchedule.style.display = "flex"
-        tableWrapper.style.display = "none"
-    } else {
-        windowNoSchedule.style.display = "none"
-        tableWrapper.style.display = "flex"
-    }
 
     const activeLabel = document.getElementById("active-row");
     const activeItem = schedule.rows.find(c => c.id === activeRowId);
@@ -261,6 +286,11 @@ function render() {
     schedule.rows.forEach(row => {
         const rowEl = document.createElement("tr");
         rowEl.id = row.id
+
+        rowEl.addEventListener("contextmenu", e => {
+            e.preventDefault(); // disable browser menu
+            openContextMenu(e.clientX, e.clientY, row.id);
+        });
 
         if (row.id === activeRowId) {
             rowEl.classList.add("active");

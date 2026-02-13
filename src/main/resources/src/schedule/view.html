@@ -6,6 +6,7 @@
     <title>Schedule</title>
     <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="view.css">
+    <link rel="stylesheet" href="context-menu.css">
     <script src="./components/rundown-select.js"></script>
 </head>
 
@@ -27,13 +28,14 @@
             <button id="program-start-set">Set Start</button>
             <button id="program-start-now">Start Now</button>
         </div>
+        <label>RundownCreator</label>
         <div class="controls">
             <button id="rundown-reload">Reload From Rundown</button>
             <rundown-select id="select-rundown-load"></rundown-select>
         </div>
     </div>
 
-    <div id="schedulewrapper" class="panel table-wrapper">
+    <div id="schedule-wrapper" class="panel table-wrapper">
         <table id="scheduleTable"></table>
     </div>
 

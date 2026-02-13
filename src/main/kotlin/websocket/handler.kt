@@ -60,6 +60,51 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     broadcast(ScheduleEvent.Load(s))
                 }
 
+                is ScheduleEvent.StartProgramAtRow -> {
+                    val current = ScheduleStore.get()
+                    val now = nextFullSecond()
+
+                    val rows = current.rows
+                    val selectedIndex = rows.indexOfFirst { it.id == event.rowId }
+                    if (selectedIndex == -1) return
+
+                    fun durationMs(row: Row): Long {
+                        return row.duration
+                    }
+
+                    val cumulativeBeforeAndCurrent = rows
+                        .take(selectedIndex)
+                        .sumOf { durationMs(it) }
+
+                    val newProgramStart = now - cumulativeBeforeAndCurrent
+
+                    var runningOffset = 0L
+
+                    val newRows = rows.mapIndexed { index, row ->
+                        val dur = durationMs(row)
+
+                        if (index <= selectedIndex) {
+                            val activated = newProgramStart + runningOffset
+                            runningOffset += dur
+                            row.copy(activatedAt = activated)
+                        } else {
+                            row.copy(activatedAt = 0)
+                        }
+                    }
+
+                    val updated = current.copy(
+                        programStart = newProgramStart,
+                        activeRowId = event.rowId,
+                        rows = newRows
+                    )
+
+                    ScheduleStore.set(updated)
+
+                    // Force all clients to fully recalc
+                    broadcast(ScheduleEvent.Load(updated))
+                }
+
+
                 is ScheduleEvent.ChangeSchedule -> {
 
                     try {
