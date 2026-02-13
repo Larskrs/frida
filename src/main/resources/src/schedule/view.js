@@ -9,12 +9,31 @@ import {
     getDurationMs,
     getCumulativeOffsetMs, millisSince, startTicker
 } from "./utils.js?v=1";
+var ws = null
 
-let host = location.host;
-if (location.toString().includes("RELOAD_ON_SAVE")) {
-    host = "localhost"
+function connectWs() {
+    let host = location.host;
+    if (location.toString().includes("RELOAD_ON_SAVE")) {
+        host = "localhost";
+    }
+
+    console.log("WS: connecting...");
+    ws = new WebSocket("ws://" + host + "/schedule/ws");
+
+    ws.onopen = () => {
+        console.log("WS: connected");
+        windowDisconnected.style.display = "none"
+        tableWrapper.style.display = "flex"
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+    };
 }
-const ws = new WebSocket("ws://" + host + "/schedule/ws");
+
+connectWs()
+
+let reconnectTimer = null;
 
 let schedule = null;
 let activeRowId = null;
@@ -26,17 +45,22 @@ let activeRowId = null;
     const windowNoSchedule = document.getElementById("window-no-shedule")
     const windowDisconnected = document.getElementById("window-disconnected")
 
+    const metadataTitle = document.getElementById("head-title")
+
 import "./components/contextMenu.js"
 import {addMenuItem, contextMenu} from "./components/contextMenu.js";
 
 
 /* -------------------- WS -------------------- */
 
-ws.onopen = (e) => {
-    console.log(e);
+function scheduleReconnect() {
+    if (reconnectTimer) return; // already waiting
 
-    windowDisconnected.style.display = "none"
-};
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectWs();
+    }, 1_000);
+}
 
 ws.onmessage = e => {
     const event = JSON.parse(e.data);
@@ -52,6 +76,8 @@ ws.onmessage = e => {
             console.log("Attempting to load schedule");
             schedule = event.schedule;
             activeRowId = schedule?.activeRowId ?? null;
+            console.log(schedule)
+            metadataTitle.innerHTML = schedule?.title
             console.log(schedule)
 
             if (schedule?.rows.length <= 0) {
@@ -86,11 +112,12 @@ ws.onmessage = e => {
 
 ws.onclose = e => {
 
-    console.log(e)
-
     windowDisconnected.style.display = "flex"
     windowNoSchedule.style.display = "none"
     tableWrapper.style.display = "none"
+
+    console.warn("WS: closed — retrying in 10s");
+    scheduleReconnect();
 
 }
 

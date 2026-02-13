@@ -22,6 +22,7 @@ object ScheduleStore {
             Schedule(
                 programStart = nextFullSecond(),
                 activeRowId = null,
+                title = "Test Schedule",
                 rows = loadColumnsFromRundown(rundownId)
             )
         } catch (e: Exception) {
@@ -29,6 +30,7 @@ object ScheduleStore {
             Schedule(
                 programStart = nextFullSecond(),
                 activeRowId = null,
+                title = "Test Schedule",
                 rows = listOf(
                     Row(
                         activatedAt = 0,

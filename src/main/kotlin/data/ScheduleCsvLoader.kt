@@ -41,6 +41,7 @@ object ScheduleCsvLoader {
 
         return Schedule(
             programStart = start,
+            title = "Test Schedule",
             rows = rows
         )
     }

@@ -319,7 +319,7 @@ function renderUpcoming() {
   const activeIndex = getActiveIndex();
   if (activeIndex < 0) return;
 
-  const upcoming = schedule.rows.slice(activeIndex);
+  const upcoming = schedule.rows.slice(activeIndex + 1);
 
   console.log(upcoming)
 

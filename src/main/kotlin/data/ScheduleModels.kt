@@ -9,6 +9,7 @@ import java.time.Instant
 data class Schedule(
     val rows: List<Row>,
     var activeRowId: Int? = null,
+    val title: String,
     var programStart: Long,
 )
 

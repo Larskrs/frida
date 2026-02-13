@@ -122,16 +122,6 @@ class RundownSelect extends HTMLElement {
 
             this.select.appendChild(opt);
         });
-
-        // 3. AUTO SELECT FIRST (NEWEST)
-        const newest = this.rundowns[this.rundowns.length - 1];
-        if (newest) {
-            const newestId = newest.rundownId ?? newest.RundownID;
-            this.select.value = newestId;
-        }
-
-        // 4. TRIGGER EVENT
-        this.handleChange();
     }
 
 
