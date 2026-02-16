@@ -10,4 +10,8 @@ data class AppConfig(
     val rundownToken: String = "rundown_token",
     val rundownId: Int = 0,
     val autoScrollerDefault: Boolean = true,
+
+    val databaseURL: String = "jdbc:postgresql://localhost:5432/postgres",
+    val databaseUser: String = "root",
+    val databasePassword: String = "password",
 )

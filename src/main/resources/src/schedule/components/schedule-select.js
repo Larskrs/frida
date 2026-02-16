@@ -1,10 +1,10 @@
-class RundownSelect extends HTMLElement {
+class ScheduleSelect extends HTMLElement {
     constructor() {
         super();
-        this.rundowns = [];
+        this.schedules = [];
         this.loaded = false;
 
-        this.loadRundowns().then(r => console.log("Loaded rundowns"))
+        this.loadSchedules().then(r => console.log("Loaded schedules"))
     }
 
     connectedCallback() {
@@ -64,8 +64,8 @@ class RundownSelect extends HTMLElement {
 
         this.select = this.querySelector("select");
 
-        this.select.addEventListener("focus", () => this.loadRundowns(), { once: true });
-        this.select.addEventListener("click", () => this.loadRundowns(), { once: true });
+        this.select.addEventListener("focus", () => this.loadSchedules(), { once: true });
+        this.select.addEventListener("click", () => this.loadSchedules(), { once: true });
         this.select.addEventListener("change", () => this.handleChange());
     }
 
@@ -81,12 +81,12 @@ class RundownSelect extends HTMLElement {
     }
 
 
-    async loadRundowns() {
+    async loadSchedules() {
         if (this.loaded) return;
 
         try {
-            const resp = await fetch(this.getApiBase() + "/api/rundowns");
-            this.rundowns = await resp.json();
+            const resp = await fetch(this.getApiBase() + "/api/schedules");
+            this.schedules = await resp.json();
             this.loaded = true;
             this.populate();
         } catch (e) {
@@ -96,13 +96,13 @@ class RundownSelect extends HTMLElement {
     }
 
     populate() {
-        if (!this.rundowns?.length) {
+        if (!this.schedules?.length) {
             this.select.innerHTML = `<option disabled>No rundowns</option>`;
             return;
         }
 
         // 1. SORT NEWEST FIRST
-        this.rundowns.sort((a, b) => {
+        this.schedules.sort((a, b) => {
             const da = new Date(a.updatedAt ?? a.date ?? 0).getTime();
             const db = new Date(b.updatedAt ?? b.date ?? 0).getTime();
             return db - da; // newest first
@@ -110,12 +110,18 @@ class RundownSelect extends HTMLElement {
 
         this.select.innerHTML = "";
 
+        const opt = document.createElement("option");
+        opt.value = "placeholder"
+        opt.id = "placeholder"
+        opt.textContent = "Select Schedule..."
+        this.select.appendChild(opt)
+
         // 2. BUILD OPTIONS
-        this.rundowns.forEach(r => {
+        this.schedules.forEach(r => {
             const opt = document.createElement("option");
 
-            const id = r.rundownId ?? r.RundownID;
-            const title = r.title ?? r.Title;
+            const id = r.id ?? r.id;
+            const title = r.name ?? r.name;
 
             opt.value = id;
             opt.textContent = title;
@@ -127,19 +133,21 @@ class RundownSelect extends HTMLElement {
 
     handleChange() {
         const id = this.select.value;
-        const r = this.rundowns.find(x =>
-            String(x.rundownId ?? x.RundownID) === id
+        const r = this.schedules.find(x =>
+            String(x.id ?? x.id) === id
         );
         if (!r) return;
 
         this.dispatchEvent(new CustomEvent("selected", {
             detail: {
-                title: r.title ?? r.Title,
-                rundownId: r.rundownId ?? r.RundownID
+                name: r.name ?? r.name,
+                id: r.id ?? r.id
             },
             bubbles: true
         }));
+
+        document.getElementById("placeholder").remove()
     }
 }
 
-customElements.define("rundown-select", RundownSelect);
+customElements.define("schedule-select", ScheduleSelect);

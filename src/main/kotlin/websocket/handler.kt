@@ -4,6 +4,7 @@ import com.example.config.ConfigManager
 import com.example.data.CellValue
 import com.example.data.Row
 import com.example.data.Schedule
+import com.example.data.ScheduleRepository
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.serialization.json.Json
@@ -31,12 +32,6 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
     sessions += session
 
     try {
-        // 1. SEND INITIAL STATE ONLY TO THIS CLIENT
-        val loadEvent = ScheduleEvent.Load(ScheduleStore.get())
-        val payload = json.encodeToString<ScheduleEvent>(loadEvent)
-        session.send(Frame.Text(payload))
-
-        println("Sent event payload: $payload")
 
         // 2. LISTEN FOR EVENTS FROM THIS CLIENT
         for (frame in session.incoming) {
@@ -45,23 +40,35 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
             when (event) {
 
+                is ScheduleEvent.RequestLoad -> {
+
+                    val schedule = ScheduleRepository.get(event.scheduleId)
+                    println("Received request for ${event.scheduleId}")
+
+                    val response = if (schedule != null) {
+                        ScheduleEvent.Load(
+                            scheduleId = event.scheduleId,
+                            schedule = schedule
+                        )
+                    } else {
+                        ScheduleEvent.Load(
+                            scheduleId = event.scheduleId,
+                            schedule = null,
+                            error = "Schedule not found"
+                        )
+                    }
+
+                    session.send(Frame.Text(json.encodeToString(response)))
+                    broadcast(response)
+                }
+
                 is ScheduleEvent.RowEdited -> {
                     // TODO: mutate store later
                     broadcast(event)
                 }
 
-                is ScheduleEvent.ReloadSchedule -> {
-
-                    ScheduleStore.updateColumns()
-                    val s = ScheduleStore.get()
-
-                    println("ATTEMPTING TO RELOAD SCHEDULE")
-
-                    broadcast(ScheduleEvent.Load(s))
-                }
-
                 is ScheduleEvent.StartProgramAtRow -> {
-                    val current = ScheduleStore.get()
+                    val current = ScheduleStore.get(event.scheduleId) ?: continue
                     val now = nextFullSecond()
 
                     val rows = current.rows
@@ -97,40 +104,12 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                         activeRowId = event.rowId,
                         rows = newRows
                     )
-
-                    ScheduleStore.set(updated)
-
-                    // Force all clients to fully recalc
-                    broadcast(ScheduleEvent.Load(updated))
+                    ScheduleStore.set(event.scheduleId, updated)
+                    broadcast(ScheduleEvent.Load(event.scheduleId, updated))
                 }
-
-
-                is ScheduleEvent.ChangeSchedule -> {
-
-                    try {
-                        val rows = loadColumnsFromRundown(rundownId = event.rundownId)
-
-                        println("LOADING A NEW SCHEDULE FROM RUNDOWN ${event.rundownId}")
-                        print("${rows.size} rows loaded")
-
-                        ScheduleStore.rundownId = event.rundownId
-
-                        ScheduleStore.updateRows(rows)
-                        val s = ScheduleStore.get()
-                        s.activeRowId = null
-                        s.programStart = Instant.now().toEpochMilli()
-                        ScheduleStore.set(s)
-                        broadcast(ScheduleEvent.Load(ScheduleStore.get()))
-
-                    } catch (e: Exception) {
-                        println("Failed to load schedule from RundownCreator ${e.message}")
-                    }
-
-                }
-
 
                 is ScheduleEvent.ProgramStartChanged -> {
-                    val current = ScheduleStore.get()
+                    val current = ScheduleStore.get(event.scheduleId) ?: continue
 
                     val isNow = event.programStart == 0L
                     val start = if (isNow) nextFullSecond() else event.programStart
@@ -163,15 +142,15 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                         )
                     }
 
-                    ScheduleStore.set(updated)
-                    broadcast(ScheduleEvent.Load(updated))
+                    ScheduleStore.set(event.scheduleId, updated)
+                    broadcast(ScheduleEvent.Load(event.scheduleId, updated))
                 }
 
 
 
                 is ScheduleEvent.ActiveRowChanged -> {
                     event.activatedAt = Instant.now().toEpochMilli()
-                    val current = ScheduleStore.get()
+                    val current = ScheduleStore.get(event.scheduleId) ?: continue
 
                     val newColumns = current.rows.map { col ->
                         if (col.id == event.rowId) {
@@ -186,7 +165,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                         rows = newColumns
                     )
 
-                    ScheduleStore.set(updatedSchedule)
+                    ScheduleStore.set(event.scheduleId, updatedSchedule)
 
                     broadcast(event)
                 }

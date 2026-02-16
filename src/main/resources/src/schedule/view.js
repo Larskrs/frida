@@ -11,6 +11,8 @@ import {
 } from "./utils.js?v=1";
 var ws = null
 
+const urlParams = new URLSearchParams(window.location.search)
+
 function connectWs() {
     let host = location.host;
     if (location.toString().includes("RELOAD_ON_SAVE")) {
@@ -28,6 +30,17 @@ function connectWs() {
             clearTimeout(reconnectTimer);
             reconnectTimer = null;
         }
+
+        if (urlParams.has("id")) {
+            const id = Number(urlParams.get("id")) ?? 0
+            if (id === 0) return
+
+            ws.send(JSON.stringify({
+                type: "com.example.websocket.ScheduleEvent.RequestLoad",
+                scheduleId: id
+            }))
+        }
+
     };
 }
 
@@ -48,7 +61,7 @@ let activeRowId = null;
     const metadataTitle = document.getElementById("head-title")
 
 import "./components/contextMenu.js"
-import {addMenuItem, contextMenu} from "./components/contextMenu.js";
+import {contextMenu, showContextMenu} from "./components/contextMenu.js";
 
 
 /* -------------------- WS -------------------- */
@@ -64,6 +77,7 @@ function scheduleReconnect() {
 
 ws.onmessage = e => {
     const event = JSON.parse(e.data);
+    console.log(event)
 
     switch (event.type.split(".").pop()) {
         case "ProgramStartChanged":
@@ -77,7 +91,7 @@ ws.onmessage = e => {
             schedule = event.schedule;
             activeRowId = schedule?.activeRowId ?? null;
             console.log(schedule)
-            metadataTitle.innerHTML = schedule?.title
+            metadataTitle.innerHTML = schedule?.name
             console.log(schedule)
 
             if (schedule?.rows.length <= 0) {
@@ -145,27 +159,19 @@ startSetBtn?.addEventListener("click", () => {
 function sendProgramStart(ms) {
     ws.send(JSON.stringify({
         type: "com.example.websocket.ScheduleEvent.ProgramStartChanged",
-        programStart: ms
+        programStart: ms,
+        scheduleId: schedule.id
     }));
 }
 
-const rundownReload = document.getElementById("rundown-reload");
-
-rundownReload?.addEventListener("click", () => {
-    ws.send(JSON.stringify({
-        type: "com.example.websocket.ScheduleEvent.ReloadSchedule",
-    }));
-})
-
-
-document.getElementById("select-rundown-load")
+document.getElementById("select-schedule-load")
     .addEventListener("selected", e => {
         console.log("User picked:", e.detail);
-        console.log("Attempting to lad ")
+        console.log("Attempting to load schedule ")
 
         ws.send(JSON.stringify({
-            type: "com.example.websocket.ScheduleEvent.ChangeSchedule",
-            rundownId: e.detail.rundownId
+            type: "com.example.websocket.ScheduleEvent.RequestLoad",
+            scheduleId: Number(e.detail.id)
         }))
     });
 
@@ -184,23 +190,14 @@ function applyEdit(event) {
     row.cells[event.key] = event.value;
 }
 
-function openContextMenu(x, y, rowId) {
-    contextMenu.innerHTML = "";
-
-    addMenuItem("Start Program Here", () => startHere(rowId));
-
-    contextMenu.style.left = x + "px";
-    contextMenu.style.top = y + "px";
-    contextMenu.style.display = "block";
-}
-
 function startHere(rowId) {
     const row = schedule.rows.find(r => r.id === rowId);
     if (!row) {alert("Could not find the rowId, try refreshing the page or contact support."); return}
 
     ws.send(JSON.stringify({
         type: "com.example.websocket.ScheduleEvent.StartProgramAtRow",
-        rowId
+        rowId,
+        scheduleId: schedule.id
     }));
 }
 
@@ -234,8 +231,14 @@ function setActiveIndex(newIndex) {
 function setActive(rowId) {
     ws.send(JSON.stringify({
         type: "com.example.websocket.ScheduleEvent.ActiveRowChanged",
-        rowId
+        rowId,
+        scheduleId: schedule.id
     }));
+}
+
+function deleteFn (rowId) {
+    schedule.rows = schedule.rows.filter((row) => row.id !== rowId)
+    render()
 }
 
 /* -------------------- RENDER -------------------- */
@@ -315,15 +318,26 @@ function render() {
         rowEl.id = row.id
 
         rowEl.addEventListener("contextmenu", e => {
-            e.preventDefault(); // disable browser menu
-            openContextMenu(e.clientX, e.clientY, row.id);
+            e.preventDefault();
+
+            showContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                items: [
+                    { label: "Open", action: () => console.log("open") },
+                    //{ label: "Rename", action: renameFn },
+                    { type: "separator" },
+                    { label: "Delete", action: () => deleteFn(row.id), danger: true },
+                    { label: "Start Program now", action: () => startHere(row.id) },
+                ]
+            });
         });
 
         if (row.id === activeRowId) {
             rowEl.classList.add("active");
         }
 
-        if (row.cells?.["Break"].value == 1) {
+        if (row.cells?.["Break"]?.value === 1) {
             rowEl.classList.add("break")
         }
 

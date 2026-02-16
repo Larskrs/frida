@@ -7,7 +7,7 @@ import kotlinx.coroutines.*
 import java.time.Instant
 import kotlin.math.max
 
-object ScheduleTicker {
+class ScheduleTicker(private var scheduleId: Int) {
 
     private var job: Job? = null
     private var config = ConfigManager.loadOrCreate()
@@ -18,17 +18,14 @@ object ScheduleTicker {
         job = scope.launch {
             while (isActive) {
 
-                val schedule = ScheduleStore.get()
+                val schedule = ScheduleStore.get(scheduleId) ?: return@launch
                 val programStart = schedule.programStart
 
                 // ---- ALIGN DELAY ----
-                val delayMs = if (programStart != null) {
+                val delayMs = run {
                     val now = nextFullSecond()
-                    val startMs = programStart
-                    val offset = (now - startMs) % 1000
+                    val offset = (now - programStart) % 1000
                     max(1, 1000 - offset) // avoid 0
-                } else {
-                    1000L // fallback if no programStart
                 }
 
                 tick()
@@ -43,7 +40,7 @@ object ScheduleTicker {
     }
 
     private suspend fun tick() {
-        var schedule = ScheduleStore.get()
+        var schedule = ScheduleStore.get(scheduleId) ?: return
 
         if (!config.autoScrollerDefault) {
             return
@@ -70,12 +67,13 @@ object ScheduleTicker {
                 rows = newRows
             )
 
-            ScheduleStore.set(schedule)
+            ScheduleStore.set(scheduleId, schedule)
 
             broadcast(
                 ScheduleEvent.ActiveRowChanged(
                     rowId = firstRow.id,
-                    activatedAt = newTime
+                    activatedAt = newTime,
+                    scheduleId = schedule.id,
                 )
             )
 
@@ -119,12 +117,13 @@ object ScheduleTicker {
                 rows = newColumns
             )
 
-            ScheduleStore.set(schedule)
+            ScheduleStore.set(scheduleId, schedule)
 
             broadcast(
                 ScheduleEvent.ActiveRowChanged(
                     rowId = nextCol.id,
-                    activatedAt = newTime
+                    activatedAt = newTime,
+                    scheduleId = schedule.id,
                 )
             )
 

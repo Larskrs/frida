@@ -27,7 +27,7 @@ fun Application.module() {
         scheduleRoutes()
         restRoutes()
     }
-    ScheduleTicker.start(this)
+
 }
 
 fun startServer(port: Int) {

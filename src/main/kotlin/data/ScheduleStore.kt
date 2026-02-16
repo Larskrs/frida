@@ -1,108 +1,86 @@
 package com.example.data
 
-import com.example.config.ConfigManager
 import com.example.nextFullSecond
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.ConcurrentHashMap
 
 object ScheduleStore {
 
-    private val state = AtomicReference(loadInitial())
+    private val schedules = ConcurrentHashMap<Int, Schedule>()
 
-    fun get(): Schedule = state.get()
-
-    fun set(newState: Schedule) {
-        state.set(newState)
-    }
-
-    var rundownId = ConfigManager.loadOrCreate().rundownId
-
-    fun loadInitial(): Schedule {
-        return try {
-            Schedule(
-                programStart = nextFullSecond(),
-                activeRowId = null,
-                title = "Test Schedule",
-                rows = loadColumnsFromRundown(rundownId)
-            )
-        } catch (e: Exception) {
-            println("CSV load failed, using fallback: ${e.message}")
-            Schedule(
-                programStart = nextFullSecond(),
-                activeRowId = null,
-                title = "Test Schedule",
-                rows = listOf(
-                    Row(
-                        activatedAt = 0,
-                        id = 1,
-                        page = "1",
-                        cells = mapOf(
-                            "kamera" to CellValue.Text("Profil - Lars"),
-                            "gfx" to CellValue.Text("super = Lars Kristian Småge Syvertsen")
-                        ),
-                        title = "What",
-                        duration = 15000L
-                    )
-                )
-            )
+    init {
+        ScheduleRepository.getAll().forEach {
+            schedules[it.id] = it
         }
     }
 
-    fun updateColumns() {
-        val current = state.get()
+    fun get(id: Int): Schedule? = schedules[id]
 
-        val newColumns = try {
-            loadColumnsFromRundown(rundownId)
-        } catch (e: Exception) {
-            println("Column update failed: ${e.message}")
-            return
-        }
+    fun getAll(): List<Schedule> = schedules.values.toList()
 
-        val oldById = current.rows.associateBy { it.id }
-
-        val merged = newColumns.map { newCol ->
-            val old = oldById[newCol.id]
-
-            if (old == null) {
-                // brand new column → use new as-is
-                newCol
-            } else {
-                // merge: keep runtime state, replace content
-                newCol.copy(
-                    activatedAt = old.activatedAt
-                    // add more runtime fields here if you have them
-                )
-            }
-        }
-
-        val updatedSchedule = current.copy(
-            rows = merged,
+    fun create(id: Int, title: String): Schedule {
+        val schedule = Schedule(
+            rows = emptyList(),
+            name = title,
+            id = id,
+            programStart = nextFullSecond()
         )
-
-        state.set(updatedSchedule)
+        schedules[id] = schedule
+        return schedule
     }
 
-    fun updateRows(newRows: List<Row>) {
-        val current = state.get()
+    fun delete(id: Int) {
+        schedules.remove(id)
+    }
 
-        val oldById = current.rows.associateBy { it.id }
+    fun set(id: Int, newState: Schedule) {
+        schedules[id] = newState
+    }
 
-        val merged = newRows.map { newRow ->
-            val old = oldById[newRow.id]
+    fun addRow(scheduleId: Int, row: Row) {
+        val schedule = schedules[scheduleId] ?: return
+        val updated = schedule.copy(rows = schedule.rows + row)
+        schedules[scheduleId] = updated
+    }
 
-            if (old == null) {
-                newRow
-            } else {
-                newRow.copy(
-                    activatedAt = old.activatedAt
-                )
-            }
-        }
-
-        val updatedSchedule = current.copy(
-            rows = merged,
+    fun removeRow(scheduleId: Int, rowId: Int) {
+        val schedule = schedules[scheduleId] ?: return
+        val updated = schedule.copy(
+            rows = schedule.rows.filterNot { it.id == rowId }
         )
-
-        state.set(updatedSchedule)
+        schedules[scheduleId] = updated
     }
+
+    fun updateRow(scheduleId: Int, newRow: Row) {
+        val schedule = schedules[scheduleId] ?: return
+        val updated = schedule.copy(
+            rows = schedule.rows.map {
+                if (it.id == newRow.id) newRow else it
+            }
+        )
+        schedules[scheduleId] = updated
+    }
+
+    fun reorderRow(scheduleId: Int, rowId: Int, newIndex: Int) {
+        val schedule = schedules[scheduleId] ?: return
+        val rows = schedule.rows.toMutableList()
+
+        val currentIndex = rows.indexOfFirst { it.id == rowId }
+        if (currentIndex == -1) return
+
+        val row = rows.removeAt(currentIndex)
+        rows.add(newIndex.coerceIn(0, rows.size), row)
+
+        schedules[scheduleId] = schedule.copy(rows = rows)
+    }
+
+    fun setActiveRow(scheduleId: Int, rowId: Int?) {
+        val schedule = schedules[scheduleId] ?: return
+        schedules[scheduleId] = schedule.copy(activeRowId = rowId)
+    }
+
+    fun setProgramStart(scheduleId: Int, startMs: Long) {
+        val schedule = schedules[scheduleId] ?: return
+        schedules[scheduleId] = schedule.copy(programStart = startMs)
+    }
+
 }

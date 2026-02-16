@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="view.css">
     <link rel="stylesheet" href="components/context-menu.css">
-    <script src="./components/rundown-select.js"></script>
+    <script src="components/schedule-select.js"></script>
 </head>
 
 <body>
@@ -19,6 +19,7 @@
             <h1>Schedule</h1>
         </div>
         <h2>Current Active: <span id="active-row">None</span></h2>
+        <schedule-select id="select-schedule-load"></schedule-select>
     </div>
 
     <div class="panel">
@@ -27,11 +28,6 @@
             <input id="program-start-input" type="time" step="1" value="00:00:00" />
             <button id="program-start-set">Set Start</button>
             <button id="program-start-now">Start Now</button>
-        </div>
-        <label>RundownCreator</label>
-        <div class="controls">
-            <button id="rundown-reload">Reload From Rundown</button>
-            <rundown-select id="select-rundown-load"></rundown-select>
         </div>
     </div>
 

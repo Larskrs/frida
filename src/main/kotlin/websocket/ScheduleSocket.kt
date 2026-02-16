@@ -7,13 +7,20 @@ import com.example.data.*
 sealed class ScheduleEvent {
 
     @Serializable
-    data class Load(val schedule: Schedule) : ScheduleEvent()
+    data class Load(
+        val scheduleId: Int,
+        val schedule: Schedule? = null,
+        val error: String? = null
+    ) : ScheduleEvent()
+
+    @Serializable
+    data class RequestLoad(val scheduleId: Int) : ScheduleEvent()
 
     @Serializable
     data class ChangeSchedule(val rundownId: Int) : ScheduleEvent()
 
     @Serializable
-    object ReloadSchedule : ScheduleEvent()
+    data class ReloadSchedule(val scheduleId: Int) : ScheduleEvent()
 
     @Serializable
     data class RowEdited(
@@ -23,16 +30,18 @@ sealed class ScheduleEvent {
     ) : ScheduleEvent()
 
     @Serializable
-    data class ProgramStartChanged(val programStart: Long) : ScheduleEvent()
+    data class ProgramStartChanged(val scheduleId: Int, val programStart: Long) : ScheduleEvent()
 
     @Serializable
     data class ActiveRowChanged(
+        val scheduleId: Int,
         val rowId: Int,
         var activatedAt: Long =0,
     ) : ScheduleEvent()
 
     @Serializable
     data class StartProgramAtRow(
+        val scheduleId: Int,
         val rowId: Int,
     ) : ScheduleEvent()
 }

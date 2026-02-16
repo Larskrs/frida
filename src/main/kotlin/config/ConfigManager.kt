@@ -20,6 +20,7 @@ object ConfigManager {
             return default
         }
 
+        println("Loading config.yml")
         return yaml.decodeFromString(configFile.readText())
     }
 

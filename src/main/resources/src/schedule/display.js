@@ -16,6 +16,8 @@ import {
 let ws = null;
 let reconnectTimer = null;
 
+const urlParams = new URLSearchParams(window.location.search)
+
 function connectWs() {
   let host = location.host;
   if (location.toString().includes("RELOAD_ON_SAVE")) {
@@ -31,13 +33,25 @@ function connectWs() {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
+
+    if (urlParams.has("id")) {
+      const id = Number(urlParams.get("id")) ?? 0
+      if (id === 0) return
+
+      ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.RequestLoad",
+        scheduleId: id
+      }))
+    }
   };
 
   ws.onmessage = e => {
     const event = JSON.parse(e.data);
+    console.log("this was triggered")
     switch (event.type.split(".").pop()) {
 
       case "Load":
+        alert("Attempting to load")
         schedule = event.schedule;
         activeRowId = schedule?.activeRowId ?? null;
         render();
@@ -91,6 +105,7 @@ let activeRowId = null;
 
 ws.onmessage = e => {
   const event = JSON.parse(e.data);
+  console.log(event?.type?.split(".")?.pop())
   switch (event.type.split(".").pop()) {
 
     case "Load":
@@ -224,7 +239,6 @@ function render() {
   const ipKeys = [
     "ip1",
     "ip2",
-    "variant",
   ];
 
   let foundAny = false;
