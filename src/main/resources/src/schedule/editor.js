@@ -37,6 +37,7 @@ const urlParams = new URLSearchParams(window.location.search);
 
 function getHost() {
     if (location.toString().includes("RELOAD_ON_SAVE")) return "localhost";
+    console.log(location.host)
     return location.host;
 }
 
@@ -67,8 +68,10 @@ function handleActiveRowChanged(newRowId) {
     state.activeRowId = newRowId;
 }
 
-function connectWs() {
-    const ws = new WebSocket(`ws://${getHost()}${WS_PATH}`);
+function connectWs(scheduleId) {
+    const url = `ws://${getHost()}${WS_PATH}/${scheduleId}`
+    console.info(url)
+    const ws = new WebSocket(url);
     state.ws = ws;
 
     ws.onopen = () => {
@@ -92,7 +95,7 @@ function connectWs() {
         }
 
         if (type === "RowEdited") {
-            applyRowPatch(event.row);
+            applyRowPatch(event);
         }
 
         if (type === "ActiveRowChanged") {
@@ -367,12 +370,31 @@ function createTextInput(value) {
 
 /* ---------------- PATCH ---------------- */
 
-function applyRowPatch(row) {
-    if (!row?.id) return;
+function applyRowPatch(event) {
+    const { rowId, key, value, cell } = event;
+    if (!rowId) return;
 
-    state.previousRows.set(row.id, row);
+    const row = state.previousRows.get(rowId);
+    if (!row) return;
+
+    // ----- TOP LEVEL -----
+    if (!cell) {
+        row[key] = value;
+    }
+
+    // ----- CELL -----
+    else {
+        if (!row.cells) row.cells = {};
+        row.cells[key] = cell;
+    }
+
+    // Store back
+    state.previousRows.set(rowId, row);
+
+    // Re-render only this row
     renderRow(row);
 }
+
 
 /* ---------------- UTILS ---------------- */
 
@@ -385,18 +407,16 @@ function safeJson(str) {
 
 /* ---------------- INIT ---------------- */
 
-connectWs();
-
-
+const scheduleId = urlParams.get("id")
+connectWs(scheduleId);
 
 
 document.getElementById("select-schedule-load")
     .addEventListener("selected", e => {
         console.log("User picked:", e.detail);
-        console.log("Attempting to load schedule ")
+        console.log("Attempting to disconnect from current Socket")
 
-        sendWs({
-            type: Events.REQUEST_LOAD,
-            scheduleId: Number(e.detail.id)
-        })
+        state.ws.close()
+
+        connectWs(e.detail.id)
     });

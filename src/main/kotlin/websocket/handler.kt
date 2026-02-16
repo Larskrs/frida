@@ -34,47 +34,37 @@ val json = Json {
     classDiscriminator = "type"
 }
 
-val sessions = mutableSetOf<DefaultWebSocketServerSession>()
+val rooms = mutableMapOf<Int, MutableSet<DefaultWebSocketServerSession>>()
+fun room(id: Int) = rooms.getOrPut(id) { mutableSetOf() }
 
-suspend fun broadcast(event: ScheduleEvent) {
+suspend fun broadcast(scheduleId: Int, event: ScheduleEvent) {
     val payload = json.encodeToString(event)
-    sessions.forEach {
+    rooms[scheduleId]?.forEach {
         it.send(Frame.Text(payload))
     }
 }
 
+suspend fun initialLoad (scheduleId: Int, session: DefaultWebSocketServerSession) {
+    val schedule = ScheduleStore.get(scheduleId)
+        ?: ScheduleRepository.get(scheduleId)
+
+    val payload: ScheduleEvent = ScheduleEvent.Load(scheduleId, schedule)
+    session.send(Frame.Text(json.encodeToString(payload)))
+}
+
 suspend fun handleSocket(session: DefaultWebSocketServerSession) {
-    sessions += session
+    val scheduleId = session.call.parameters["id"]?.toIntOrNull() ?: return
+    val room = room(scheduleId)
+    room += session
+
+    initialLoad(scheduleId, session)
 
     try {
 
-        // 2. LISTEN FOR EVENTS FROM THIS CLIENT
         for (frame in session.incoming) {
             frame as? Frame.Text ?: continue
             println(json.encodeToString(frame.readText()))
             when (val event = json.decodeFromString<ScheduleEvent>(frame.readText())) {
-
-                is ScheduleEvent.RequestLoad -> {
-
-                    val schedule = ScheduleRepository.get(event.scheduleId)
-                    println("Received request for ${event.scheduleId}")
-
-                    val response = if (schedule != null) {
-                        ScheduleEvent.Load(
-                            scheduleId = event.scheduleId,
-                            schedule = schedule
-                        )
-                    } else {
-                        ScheduleEvent.Load(
-                            scheduleId = event.scheduleId,
-                            schedule = null,
-                            error = "Schedule not found"
-                        )
-                    }
-
-                    session.send(Frame.Text(json.encodeToString(response)))
-                    broadcast(response)
-                }
 
                 is ScheduleEvent.RowEdited -> {
 
@@ -118,19 +108,13 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                     // ---- BROADCAST PATCH + LOAD ----
                     broadcast(
+                        event.scheduleId,
                         ScheduleEvent.RowEdited(
                             scheduleId = event.scheduleId,
                             rowId = event.rowId,
                             key = event.key,
                             value = event.value,
                             cell = event.cell
-                        )
-                    )
-
-                    broadcast(
-                        ScheduleEvent.Load(
-                            scheduleId = event.scheduleId,
-                            schedule = updatedSchedule
                         )
                     )
                 }
@@ -173,7 +157,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                         rows = newRows
                     )
                     ScheduleStore.set(event.scheduleId, updated)
-                    broadcast(ScheduleEvent.Load(event.scheduleId, updated))
+                    broadcast(event.scheduleId, ScheduleEvent.Load(event.scheduleId, updated))
                 }
 
                 is ScheduleEvent.ProgramStartChanged -> {
@@ -211,7 +195,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     }
 
                     ScheduleStore.set(event.scheduleId, updated)
-                    broadcast(ScheduleEvent.Load(event.scheduleId, updated))
+                    broadcast(event.scheduleId, ScheduleEvent.Load(event.scheduleId, updated))
                 }
 
                 is ScheduleEvent.RowCreate -> {
@@ -231,6 +215,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                     // ---- BROADCAST FULL LOAD ----
                     broadcast(
+                        event.scheduleId,
                         ScheduleEvent.Load(
                             scheduleId = event.scheduleId,
                             schedule = updated
@@ -267,6 +252,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
 
                     // 5. BROADCAST
                     broadcast(
+                        event.scheduleId,
                         ScheduleEvent.Load(
                             scheduleId = event.scheduleId,
                             schedule = updated
@@ -295,7 +281,7 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     ScheduleStore.set(event.scheduleId, updatedSchedule)
                     ScheduleRepository.save(updatedSchedule)
 
-                    broadcast(event)
+                    broadcast(event.scheduleId,event)
                 }
 
                 else -> {}
@@ -303,7 +289,9 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
         }
 
     } finally {
-        sessions -= session
+        rooms[scheduleId]?.remove(session)
+        if (rooms[scheduleId]?.isEmpty() == true)
+            rooms.remove(scheduleId)
     }
 }
 

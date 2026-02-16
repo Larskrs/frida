@@ -70,6 +70,7 @@ class ScheduleTicker(private var scheduleId: Int) {
             ScheduleStore.set(scheduleId, schedule)
 
             broadcast(
+                scheduleId,
                 ScheduleEvent.ActiveRowChanged(
                     rowId = firstRow.id,
                     activatedAt = newTime,
@@ -120,6 +121,7 @@ class ScheduleTicker(private var scheduleId: Int) {
             ScheduleStore.set(scheduleId, schedule)
 
             broadcast(
+                scheduleId,
                 ScheduleEvent.ActiveRowChanged(
                     rowId = nextCol.id,
                     activatedAt = newTime,

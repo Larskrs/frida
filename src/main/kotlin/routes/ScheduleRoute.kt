@@ -10,7 +10,7 @@ fun Route.scheduleRoutes() {
     staticResources("schedule", "src/schedule")
     staticResources("chat", "src/chat")
 
-    webSocket("schedule/ws") {
+    webSocket("/schedule/ws/{id}") {
         handleSocket(this)
     }
 }
