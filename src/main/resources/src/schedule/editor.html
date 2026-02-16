@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="global.css">
+    <meta charset="UTF-8" />
+    <title id="head-title">Schedule</title>
+    <link rel="stylesheet" href="fonts.css">
+    <link rel="stylesheet" href="editor.css">
+    <link rel="stylesheet" href="components/context-menu.css">
+    <script src="components/schedule-select.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+    <nav>
+        <schedule-select id="select-schedule-load"></schedule-select>
+    </nav>
+
+    <div class="panel">
+        <div class="header-name-row">
+            <h1>Schedule</h1>
+        </div>
+        <h2>Current Active: <span id="active-row">None</span></h2>
+    </div>
+
+    <div id="schedule-wrapper">
+        <table id="scheduleTable">
+            <thead id="scheduleHead"></thead>
+            <tbody id="scheduleBody"></tbody>
+        </table>
+    </div>
+
+    <div id="window-no-shedule">No schedule</div>
+    <div id="window-disconnected">Disconnected</div>
+
+</div>
+
+<script type="module" src="editor.js?v=1"></script>
+</body>
+</html>

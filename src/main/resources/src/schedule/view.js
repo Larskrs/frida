@@ -5,333 +5,163 @@ import {
     parseTimeToTodayMillis,
     formatClock,
     getRowTiming,
-    startTicker
-} from "./utils.js?v=2";
+    getRowAbsoluteStart,
+    getDurationMs,
+    getCumulativeOffsetMs, millisSince, startTicker
+} from "./utils.js?v=1";
+var ws = null
 
-import "./components/contextMenu.js";
-import { showContextMenu } from "./components/contextMenu.js";
-
-/* -------------------- CONSTANTS -------------------- */
-
-const WS_PATH = "/schedule/ws";
-const RECONNECT_DELAY = 1000;
-
-const Events = {
-    REQUEST_LOAD: "com.example.websocket.ScheduleEvent.RequestLoad",
-    PROGRAM_START: "com.example.websocket.ScheduleEvent.ProgramStartChanged",
-    ACTIVE_ROW: "com.example.websocket.ScheduleEvent.ActiveRowChanged",
-    ROW_EDIT: "com.example.websocket.ScheduleEvent.RowEdited",
-    START_AT_ROW: "com.example.websocket.ScheduleEvent.StartProgramAtRow",
-};
-
-/* -------------------- STATE -------------------- */
-
-const state = {
-    ws: null,
-    reconnectTimer: null,
-    schedule: null,
-    activeRowId: null,
-    renderQueued: false,
-
-    editMode: false,
-    editingCell: null, // {rowId, key}
-};
-
-/* -------------------- DOM -------------------- */
-
-const el = {
-    table: document.getElementById("scheduleTable"),
-    tableWrapper: document.getElementById("schedule-wrapper"),
-    windowNoSchedule: document.getElementById("window-no-shedule"),
-    windowDisconnected: document.getElementById("window-disconnected"),
-    metadataTitle: document.getElementById("head-title"),
-    startInput: document.getElementById("program-start-input"),
-    startNowBtn: document.getElementById("program-start-now"),
-    startSetBtn: document.getElementById("program-start-set"),
-    activeLabel: document.getElementById("active-row"),
-    startLabel: document.getElementById("program-start"),
-};
-
-const urlParams = new URLSearchParams(window.location.search);
-
-/* -------------------- UTIL -------------------- */
-
-function safeJson(str) {
-    try { return JSON.parse(str); }
-    catch { return null; }
-}
-
-function show(elm, v = true) {
-    if (!elm) return;
-    elm.style.display = v ? "flex" : "none";
-}
-
-function sendWs(payload) {
-    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
-    state.ws.send(JSON.stringify(payload));
-}
-
-/* -------------------- WS -------------------- */
-
-function getHost() {
-    if (location.toString().includes("RELOAD_ON_SAVE")) return "localhost";
-    return location.host;
-}
+const urlParams = new URLSearchParams(window.location.search)
 
 function connectWs() {
-    const ws = new WebSocket(`ws://${getHost()}${WS_PATH}`);
-    state.ws = ws;
+    let host = location.host;
+    if (location.toString().includes("RELOAD_ON_SAVE")) {
+        host = "localhost";
+    }
+
+    console.log("WS: connecting...");
+    ws = new WebSocket("ws://" + host + "/schedule/ws");
 
     ws.onopen = () => {
-        show(el.windowDisconnected, false);
-        show(el.tableWrapper, true);
-
-        if (state.reconnectTimer) {
-            clearTimeout(state.reconnectTimer);
-            state.reconnectTimer = null;
+        console.log("WS: connected");
+        windowDisconnected.style.display = "none"
+        tableWrapper.style.display = "flex"
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
         }
 
         if (urlParams.has("id")) {
-            const id = Number(urlParams.get("id"));
-            if (id > 0) {
-                sendWs({
-                    type: Events.REQUEST_LOAD,
-                    scheduleId: id,
-                });
-            }
+            const id = Number(urlParams.get("id")) ?? 0
+            if (id === 0) return
+
+            ws.send(JSON.stringify({
+                type: "com.example.websocket.ScheduleEvent.RequestLoad",
+                scheduleId: id
+            }))
         }
-    };
 
-    ws.onmessage = e => {
-        const event = safeJson(e.data);
-        console.log({event})
-        if (!event?.type) return;
-
-        const type = event.type.split(".").pop();
-
-        switch (type) {
-            case "ProgramStartChanged":
-                if (state.schedule) state.schedule.programStart = event.programStart;
-                scheduleRender();
-                break;
-
-            case "Load":
-                loadSchedule(event.schedule);
-                break;
-
-            case "ActiveRowChanged":
-                state.activeRowId = event.rowId;
-                updateActivated(event.rowId, event.activatedAt);
-                scheduleRender();
-                break;
-
-            case "RowEdited":
-            case "rowEdited":
-                applyEdit(event);
-                scheduleRender();
-                break;
-        }
-    };
-
-    ws.onclose = () => {
-        show(el.windowDisconnected, true);
-        show(el.tableWrapper, false);
-        show(el.windowNoSchedule, false);
-        scheduleReconnect();
     };
 }
+
+connectWs()
+
+let reconnectTimer = null;
+
+let schedule = null;
+let activeRowId = null;
+
+/* ---------------- Static Elements --------- */
+
+const table = document.getElementById("scheduleTable");
+const tableWrapper = document.getElementById("schedule-wrapper")
+const windowNoSchedule = document.getElementById("window-no-shedule")
+const windowDisconnected = document.getElementById("window-disconnected")
+
+const metadataTitle = document.getElementById("head-title")
+
+import "./components/contextMenu.js"
+import {contextMenu, showContextMenu} from "./components/contextMenu.js";
+
+
+/* -------------------- WS -------------------- */
 
 function scheduleReconnect() {
-    if (state.reconnectTimer) return;
-    state.reconnectTimer = setTimeout(() => {
-        state.reconnectTimer = null;
+    if (reconnectTimer) return; // already waiting
+
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
         connectWs();
-    }, RECONNECT_DELAY);
+    }, 1_000);
 }
 
-/* -------------------- SCHEDULE -------------------- */
+ws.onmessage = e => {
+    const event = JSON.parse(e.data);
+    console.log(event)
 
-function loadSchedule(schedule) {
-    console.log("LoadSchedule Event Loaded")
-    console.log(schedule)
-    state.schedule = schedule;
-    state.activeRowId = schedule?.activeRowId ?? null;
+    switch (event.type.split(".").pop()) {
+        case "ProgramStartChanged":
+            if (schedule) {
+                schedule.programStart = event.programStart;
+            }
+            render();
+            break;
+        case "Load":
+            console.log("Attempting to load schedule");
+            schedule = event.schedule;
+            activeRowId = schedule?.activeRowId ?? null;
+            console.log(schedule)
+            metadataTitle.innerHTML = schedule?.name
+            console.log(schedule)
 
-    if (el.metadataTitle) el.metadataTitle.textContent = schedule?.name ?? "";
+            if (schedule?.rows.length <= 0) {
+                windowNoSchedule.style.display = "flex"
+                tableWrapper.style.display = "none"
+            } else {
+                windowNoSchedule.style.display = "none"
+                tableWrapper.style.display = "flex"
+            }
+            render();
+            break;
 
-    const hasRows = schedule?.rows?.length > 0;
-    show(el.windowNoSchedule, !hasRows);
-    show(el.tableWrapper, hasRows);
+        case "ActiveRowChanged":
+            activeRowId = event.rowId;
 
-    scheduleRender();
-}
-
-function updateActivated(rowId, activatedAt) {
-    const row = state.schedule?.rows?.find(r => r.id === rowId);
-    if (row) row.activatedAt = activatedAt;
-}
-
-/* -------------------- INPUT -------------------- */
-
-document.addEventListener("keydown", e => {
-    if (!state.schedule) return;
-
-    const idx = state.schedule.rows.findIndex(r => r.id === state.activeRowId);
-    if (idx === -1) return;
-
-    if (e.key === "ArrowDown" || e.key === " ") {
-        e.preventDefault();
-        setActiveIndex(idx + 1);
-    }
-
-    if (e.key === "ArrowUp") {
-        setActiveIndex(idx - 1);
-    }
-});
-
-/* -------------------- ACTIONS -------------------- */
-
-function setActiveIndex(i) {
-    const rows = state.schedule?.rows;
-    if (!rows || i < 0 || i >= rows.length) return;
-    setActive(rows[i].id);
-}
-
-function setActive(rowId) {
-    sendWs({
-        type: Events.ACTIVE_ROW,
-        rowId,
-        scheduleId: state.schedule.id,
-    });
-}
-
-function startHere(rowId) {
-    sendWs({
-        type: Events.START_AT_ROW,
-        rowId,
-        scheduleId: state.schedule.id,
-    });
-}
-
-/* -------------------- EDIT -------------------- */
-
-function applyEdit(event) {
-    const row = state.schedule?.rows?.find(r => r.id === event.rowId);
-    if (!row) return;
-
-    const key = event.key.toLowerCase();
-    if (key === "title") row.title = event.value;
-    else if (key === "page") row.page = event.value;
-    else if (key === "duration") row.duration = Number(event.value);
-    else row.cells[key] = event.value;
-}
-
-/* -------------------- RENDER -------------------- */
-
-function scheduleRender() {
-    if (state.renderQueued) return;
-    if (state.editMode) return;
-
-    state.renderQueued = true;
-    requestAnimationFrame(() => {
-        state.renderQueued = false;
-        render();
-    });
-}
-
-function render() {
-    const { schedule, activeRowId } = state;
-    if (!schedule || !el.table) return;
-
-    el.table.innerHTML = "";
-
-    const activeRow = schedule.rows.find(r => r.id === activeRowId);
-
-    if (el.activeLabel) {
-        if (!activeRow) el.activeLabel.textContent = "No row selected";
-        else {
-            const t = getRowTiming(activeRow, schedule);
-            el.activeLabel.textContent =
-                `${activeRow.id} - ${cleanTxt(activeRow.title)} - ${formatMillisTime(t.remaining)}`;
-        }
-    }
-
-    if (el.startLabel && schedule.programStart) {
-        el.startLabel.textContent = "Program Start: " + formatClock(schedule.programStart);
-    }
-
-    const keys = new Set(["page", "title", "status", "duration", "delay"]);
-
-    schedule.rows.forEach(row =>
-        Object.keys(row.cells || {}).forEach(k => keys.add(cleanTxt(k)))
-    );
-
-    const header = document.createElement("tr");
-    keys.forEach(k => {
-        const th = document.createElement("th");
-        th.textContent = k.toUpperCase();
-        header.appendChild(th);
-    });
-    el.table.appendChild(header);
-
-    schedule.rows.forEach(row => {
-        const tr = document.createElement("tr");
-        if (row.id === activeRowId) tr.classList.add("active");
-
-        tr.addEventListener("contextmenu", e => {
-            e.preventDefault();
-            showContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                items: [
-                    { label: "Activate Row", action: () => setActive(row.id) },
-                    { type: "separator" },
-                    { label: "Start Program now", action: () => startHere(row.id) },
-                ],
-            });
-        });
-
-        keys.forEach(key => {
-            const td = document.createElement("td");
-
-            td.addEventListener("click", () => state.editMode = true)
-
-            const value =
-                key === "title" ? cleanTxt(row.title) :
-                    key === "page" ? row.page :
-                        formatCell(row.cells?.[key]);
-
-            if (!state.editMode) {
-                td.textContent = value;
-                tr.appendChild(td);
-                return;
+            if (schedule?.rows) {
+                const row = schedule.rows.find(c => c.id === event.rowId);
+                if (row) {
+                    row.activatedAt = event.activatedAt;
+                }
             }
 
-            // ---- EDIT MODE ----
-            const input = document.createElement("input");
-            input.value = value ?? "";
-            input.style.width = "100%";
+            render();
+            break;
 
-            input.addEventListener("focus", () => {
-                state.editingCell = { rowId: row.id, key };
-            });
+        case "rowEdited":
+            applyEdit(event);
+            render();
+            break;
+    }
+};
 
-            input.addEventListener("blur", () => commitEdit(row.id, key, input.value));
-            input.addEventListener("keydown", e => {
-                if (e.key === "Enter") {
-                    input.blur();
-                }
-                if (e.key === "Escape") {
-                    render(); // revert
-                }
-            });
+ws.onclose = e => {
 
-            td.appendChild(input);
-            tr.appendChild(td);
-        });
+    windowDisconnected.style.display = "flex"
+    windowNoSchedule.style.display = "none"
+    tableWrapper.style.display = "none"
 
-        el.table.appendChild(tr);
-    });
+    console.warn("WS: closed — retrying in 10s");
+    scheduleReconnect();
+
+}
+
+
+const startInput = document.getElementById("program-start-input");
+const startNowBtn = document.getElementById("program-start-now");
+const startSetBtn = document.getElementById("program-start-set");
+
+startNowBtn?.addEventListener("click", () => {
+    const now = Date.now();
+    sendProgramStart(0);
+
+    // also update input visually
+    const d = new Date(now);
+    startInput.value =
+        d.toTimeString().split(" ")[0]; // HH:MM:SS
+});
+
+startSetBtn?.addEventListener("click", () => {
+    if (!startInput.value) return;
+    const ms = parseTimeToTodayMillis(startInput.value);
+    sendProgramStart(ms);
+});
+
+function sendProgramStart(ms) {
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.ProgramStartChanged",
+        programStart: ms,
+        scheduleId: schedule.id
+    }));
 }
 
 document.getElementById("select-schedule-load")
@@ -339,45 +169,239 @@ document.getElementById("select-schedule-load")
         console.log("User picked:", e.detail);
         console.log("Attempting to load schedule ")
 
-        sendWs({
-            type: Events.REQUEST_LOAD,
+        ws.send(JSON.stringify({
+            type: "com.example.websocket.ScheduleEvent.RequestLoad",
             scheduleId: Number(e.detail.id)
-        })
+        }))
     });
 
-function commitEdit(rowId, key, value) {
-    if (!state.schedule) return;
 
-    const row = state.schedule.rows.find(r => r.id === rowId);
+/* -------------------- TIMING -------------------- */
+
+// Duration is stored in cells["duration"].value in SECONDS
+
+// Sum all durations ABOVE this row
+
+/* -------------------- EDITS -------------------- */
+
+function applyEdit(event) {
+    const row = schedule.rows.find(c => c.id === event.rowId);
     if (!row) return;
+    row.cells[event.key] = event.value;
+}
 
-    let finalValue = value;
+function startHere(rowId) {
+    const row = schedule.rows.find(r => r.id === rowId);
+    if (!row) {alert("Could not find the rowId, try refreshing the page or contact support."); return}
 
-    if (key === "duration") {
-        finalValue = parseInt(value) || 0;
-        row.duration = finalValue;
-    } else if (key === "title") {
-        row.title = value;
-    } else if (key === "page") {
-        row.page = value;
-    } else {
-        row.cells[key] = finalValue;
-    }
-
-    sendWs({
-        type: Events.ROW_EDIT,
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.StartProgramAtRow",
         rowId,
-        key,
-        value: finalValue,
-        scheduleId: state.schedule.id,
-    });
+        scheduleId: schedule.id
+    }));
 }
 
 
-/* -------------------- TICKER -------------------- */
+/* -------------------- INPUT -------------------- */
 
-startTicker(1000, scheduleRender);
+document.addEventListener("keydown", e => {
+    if (!schedule) return;
 
-/* -------------------- INIT -------------------- */
+    const idx = schedule.rows.findIndex(c => c.id === activeRowId);
+    if (idx === -1) return;
 
-connectWs();
+    if (e.key === "ArrowDown" || e.key === " ") {
+        e.preventDefault()
+        setActiveIndex(idx + 1);
+
+    }
+
+    if (e.key === "ArrowUp") {
+        setActiveIndex(idx - 1);
+    }
+});
+
+function setActiveIndex(newIndex) {
+    if (!schedule) return;
+    if (newIndex < 0 || newIndex >= schedule.rows.length) return;
+
+    setActive(schedule.rows[newIndex].id);
+}
+
+function setActive(rowId) {
+    ws.send(JSON.stringify({
+        type: "com.example.websocket.ScheduleEvent.ActiveRowChanged",
+        rowId,
+        scheduleId: schedule.id
+    }));
+}
+
+function deleteFn (rowId) {
+    schedule.rows = schedule.rows.filter((row) => row.id !== rowId)
+    render()
+}
+
+/* -------------------- RENDER -------------------- */
+
+function render() {
+    table.innerHTML = "";
+
+    if (!schedule) return;
+
+    const activeLabel = document.getElementById("active-row");
+    const activeItem = schedule.rows.find(c => c.id === activeRowId);
+
+    if (!activeItem) {
+        activeLabel.textContent = "No row selected";
+    } else {
+        const t = getRowTiming(activeItem, schedule);
+        activeLabel.textContent =
+            `${activeItem.id} - ${cleanTxt(activeItem.title)} - ${formatMillisTime(t.remaining)}`;
+    }
+
+    // Program start label (optional)
+    const startLabel = document.getElementById("program-start");
+    if (startLabel && schedule.programStart) {
+        startLabel.textContent =
+            "Program Start: " + formatClock(schedule.programStart);
+    }
+
+    const hiddenKeys = new Set(["Break"]);
+    const keys = new Set(["page", "title", "status", "duration", "delay"]);
+
+    schedule.rows.forEach(row =>
+        Object.keys(row.cells || {}).forEach(raw => {
+            if (!hiddenKeys.has(cleanTxt(raw))) {
+                keys.add(cleanTxt(raw))
+            }
+        })
+    );
+
+    // Header
+    const headerRow = document.createElement("tr");
+    keys.forEach(key => {
+        const th = document.createElement("th");
+        th.textContent = key.toUpperCase();
+        headerRow.appendChild(th);
+    });
+    table.appendChild(headerRow);
+
+    // Placeholder row if no active row
+    if (!activeItem) {
+        const row = document.createElement("tr");
+        row.classList.add("placeholder-row");
+
+        keys.forEach((key, i) => {
+            const td = document.createElement("td");
+
+            if (i === 0) {
+                td.textContent = "-";
+            } else if (key === "title") {
+                td.textContent = "No row selected – waiting for input from script";
+            } else {
+                td.textContent = "";
+            }
+
+            switch (key.toLowerCase()) {
+
+            }
+
+            row.appendChild(td);
+        });
+
+        table.appendChild(row);
+    }
+
+    // Rows
+    schedule.rows.forEach(row => {
+        const rowEl = document.createElement("tr");
+        rowEl.id = row.id
+
+        rowEl.addEventListener("contextmenu", e => {
+            e.preventDefault();
+
+            showContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                items: [
+                    { label: "Open", action: () => console.log("open") },
+                    //{ label: "Rename", action: renameFn },
+                    { type: "separator" },
+                    { label: "Delete", action: () => deleteFn(row.id), danger: true },
+                    { label: "Start Program now", action: () => startHere(row.id) },
+                ]
+            });
+        });
+
+        if (row.id === activeRowId) {
+            rowEl.classList.add("active");
+        }
+
+        if (row.cells?.["Break"]?.value === 1) {
+            rowEl.classList.add("break")
+        }
+
+        rowEl.addEventListener("click", () => setActive(row.id));
+
+        keys.forEach(key => {
+            const td = document.createElement("td");
+
+            if (key === "page") {
+                td.textContent = row.page;
+
+            } else if (key === "title") {
+                td.textContent = cleanTxt(row.title);
+
+            } else if (key === "start") {
+                const t = getRowTiming(row, schedule);
+                td.textContent = t.abs ? formatClock(t.abs) : "-";
+
+            } else if (key === "status") {
+                const t = getRowTiming(row, schedule);
+                td.textContent = t.status;
+
+                td.classList.remove("upcoming", "ontime", "late", "overdue");
+                if (t.status === "UPCOMING") td.classList.add("upcoming");
+                if (t.status === "ON TIME") td.classList.add("ontime");
+                if (t.status === "LATE") td.classList.add("late");
+                if (t.status === "OVERDUE") td.classList.add("late");
+
+            } else if (key === "duration") {
+                const t = getRowTiming(row, schedule)
+                const activeIndex = schedule.rows.findIndex(c => c.id === activeRowId);
+                const idx = schedule.rows.findIndex(c => c.id === row.id);
+                if (activeRowId !== row.id) {
+                    td.textContent = formatMillisTime(t.duration)
+                } else if (t.remaining > 0) {
+                    td.textContent = formatMillisTime(t.remaining)
+                }
+            } else if (key === "delay") {
+                const t = getRowTiming(row, schedule);
+
+                if (!t.abs) {
+                    td.textContent = "-";
+                } else if (t.delay === 0) {
+                    td.textContent = "00:00";
+                } else {
+                    const sign = t.delay > 0 ? "+" : "-"
+                    td.textContent = `${sign}${formatMillisTime(Math.abs(t.delay))}`;
+                }
+
+                td.classList.remove("early", "late");
+                if (t.delay > 0) td.classList.add("late");
+                if (t.delay < 0) td.classList.add("early");
+
+
+            } else {
+                td.textContent = formatCell(row.cells?.[key]);
+            }
+
+            rowEl.appendChild(td);
+        });
+
+        table.appendChild(rowEl);
+    });
+}
+
+// Re-render clock every second
+startTicker(1000, () => render())

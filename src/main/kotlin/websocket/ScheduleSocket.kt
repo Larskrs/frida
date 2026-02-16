@@ -2,6 +2,7 @@ package com.example.websocket
 
 import kotlinx.serialization.Serializable
 import com.example.data.*
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 sealed class ScheduleEvent {
@@ -24,10 +25,13 @@ sealed class ScheduleEvent {
 
     @Serializable
     data class RowEdited(
-        val rowId: String,
+        val scheduleId: Int,
+        val rowId: Int,
         val key: String,
-        val value: CellValue
+        val value: JsonElement? = null,
+        val cell: CellValue? = null
     ) : ScheduleEvent()
+
 
     @Serializable
     data class ProgramStartChanged(val scheduleId: Int, val programStart: Long) : ScheduleEvent()

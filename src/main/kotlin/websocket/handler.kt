@@ -12,6 +12,10 @@ import kotlinx.serialization.encodeToString
 import com.example.data.ScheduleStore
 import com.example.data.loadColumnsFromRundown
 import com.example.nextFullSecond
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.time.Instant
 
 val json = Json {
@@ -36,9 +40,8 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
         // 2. LISTEN FOR EVENTS FROM THIS CLIENT
         for (frame in session.incoming) {
             frame as? Frame.Text ?: continue
-            val event = json.decodeFromString<ScheduleEvent>(frame.readText())
-
-            when (event) {
+            println(json.encodeToString(frame.readText()))
+            when (val event = json.decodeFromString<ScheduleEvent>(frame.readText())) {
 
                 is ScheduleEvent.RequestLoad -> {
 
@@ -63,8 +66,62 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                 }
 
                 is ScheduleEvent.RowEdited -> {
-                    // TODO: mutate store later
-                    broadcast(event)
+
+                    println("Editing ${event.scheduleId} row: ${event.rowId}")
+
+                    val current = ScheduleStore.get(event.scheduleId)
+                        ?: ScheduleRepository.get(event.scheduleId)
+                        ?: continue
+
+
+
+                    val updatedRows = current.rows.map { row ->
+                        if (row.id != event.rowId) return@map row
+
+                        // ----- TOP LEVEL FIELDS -----
+                        if (event.cell == null) {
+                            when (event.key) {
+                                "title" -> row.copy(title = event.value.asString() ?: "")
+                                "page" -> row.copy(page = event.value.asString() ?: "")
+                                "script" -> row.copy(script = event.value.asString() ?: "")
+                                "duration" -> row.copy(duration = event.value.asLong() ?: row.duration)
+                                else -> row
+                            }
+                        }
+
+                        // ----- CELL PATCH -----
+                        else {
+                            val newCells = row.cells.toMutableMap()
+                            newCells[event.key] = event.cell
+                            row.copy(cells = newCells)
+                        }
+                    }
+
+                    val updatedSchedule = current.copy(rows = updatedRows)
+
+                    // ---- STORE IN MEMORY ----
+                    ScheduleStore.set(event.scheduleId, updatedSchedule)
+
+                    // ---- PERSIST ----
+                    ScheduleRepository.save(updatedSchedule)
+
+                    // ---- BROADCAST PATCH + LOAD ----
+                    broadcast(
+                        ScheduleEvent.RowEdited(
+                            scheduleId = event.scheduleId,
+                            rowId = event.rowId,
+                            key = event.key,
+                            value = event.value,
+                            cell = event.cell
+                        )
+                    )
+
+                    broadcast(
+                        ScheduleEvent.Load(
+                            scheduleId = event.scheduleId,
+                            schedule = updatedSchedule
+                        )
+                    )
                 }
 
                 is ScheduleEvent.StartProgramAtRow -> {
@@ -178,3 +235,10 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
         sessions -= session
     }
 }
+
+
+fun JsonElement?.asString(): String? =
+    this?.jsonPrimitive?.contentOrNull
+
+fun JsonElement?.asLong(): Long? =
+    this?.jsonPrimitive?.longOrNull
