@@ -105,7 +105,8 @@ fun loadColumnsFromRundown(rundownId: Int): List<Row> {
             page = page,
             title = title,
             duration = durationSec * 1000L,
-            cells = cells
+            cells = cells,
+            order = 0
         )
     }
 }

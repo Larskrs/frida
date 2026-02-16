@@ -5,15 +5,17 @@
     outline: none;
     padding: 6px;
     display: none;
+    flex-direction: column;
     z-index: 9999;
     min-width: 180px;
     font-family: Roboto, sans-serif;
     border-radius: 8px;
+    gap: 4px;
 }
 
 #context-menu button {
     width: 100%;
-    background: none;
+    background: #171717;
     border: none;
     color: white;
     padding: 8px 14px;
@@ -24,16 +26,18 @@
 
 #context-menu hr {
     border: 1px solid #222;
-    margin-block: 4px;
+    width: 100%;
+    margin-block: 2px;
 }
 
 #context-menu button:hover {
     background: #222;
 }
-#context-menu .danger:hover {
-    background: #360202;
-}
-
 #context-menu .danger {
-    color: #ff4c4c;
+    background: #251515;
+    color: #c53535;;
+}
+#context-menu .danger:hover {
+    background: #540303;
+    color: #ff6767;;
 }

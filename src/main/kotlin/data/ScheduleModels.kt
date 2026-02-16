@@ -18,6 +18,7 @@ data class Schedule(
 @Serializable
 data class Row(
     val id: Int,
+    val order: Int,
     val page: String,
     val title: String,
     val duration: Long,

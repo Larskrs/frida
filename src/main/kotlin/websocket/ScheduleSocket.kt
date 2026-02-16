@@ -24,6 +24,18 @@ sealed class ScheduleEvent {
     data class ReloadSchedule(val scheduleId: Int) : ScheduleEvent()
 
     @Serializable
+    data class RowCreate(
+        val scheduleId: Int,
+        val order: Int,
+    ): ScheduleEvent()
+
+    @Serializable
+    data class RowDelete(
+        val scheduleId: Int,
+        val rowId: Int,
+    ): ScheduleEvent()
+
+    @Serializable
     data class RowEdited(
         val scheduleId: Int,
         val rowId: Int,

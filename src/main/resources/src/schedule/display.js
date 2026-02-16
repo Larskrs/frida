@@ -127,8 +127,9 @@ ws.onmessage = e => {
       render();
       break;
 
-    case "rowEdited":
-      applyEdit(event);
+    case "RowEdited":
+      schedule = event.schedule;
+      activeRowId = schedule?.activeRowId ?? null;
       render();
       break;
   }

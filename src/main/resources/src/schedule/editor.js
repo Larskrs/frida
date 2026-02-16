@@ -10,6 +10,9 @@ const RECONNECT_DELAY = 1000;
 const Events = {
     REQUEST_LOAD: "com.example.websocket.ScheduleEvent.RequestLoad",
     ROW_EDIT: "com.example.websocket.ScheduleEvent.RowEdited",
+    CREATE_ROW: "com.example.websocket.ScheduleEvent.RowCreate",
+    DELETE_ROW: "com.example.websocket.ScheduleEvent.RowDelete",
+    ACTIVE_CHANGED: "com.example.websocket.ScheduleEvent.ActiveRowChanged"
 };
 
 const state = {
@@ -17,7 +20,8 @@ const state = {
     reconnectTimer: null,
     schedule: null,
     previousRows: new Map(),
-    columns: []
+    columns: [],
+    activeRowId: null,
 };
 
 const el = {
@@ -40,6 +44,27 @@ function sendWs(payload) {
     if (state.ws?.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify(payload));
     }
+}
+
+function handleActiveRowChanged(newRowId) {
+    if (!newRowId) return;
+
+    // Remove previous
+    if (state.activeRowId !== null) {
+        const prevEl = document.querySelector(
+            `tr[data-row="${state.activeRowId}"]`
+        );
+        if (prevEl) prevEl.classList.remove("active");
+    }
+
+    // Add new
+    const newEl = document.querySelector(
+        `tr[data-row="${newRowId}"]`
+    );
+    if (newEl) newEl.classList.add("active");
+
+    // Store
+    state.activeRowId = newRowId;
 }
 
 function connectWs() {
@@ -68,6 +93,10 @@ function connectWs() {
 
         if (type === "RowEdited") {
             applyRowPatch(event.row);
+        }
+
+        if (type === "ActiveRowChanged") {
+            handleActiveRowChanged(event.rowId);
         }
     };
 
@@ -119,6 +148,14 @@ function rowsEqual(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function setActive(rowId) {
+    sendWs({
+        type: Events.ACTIVE_CHANGED,
+        rowId,
+        scheduleId: state.schedule.id
+    });
+}
+
 /* ---------------- ROW RENDER ---------------- */
 
 
@@ -166,6 +203,22 @@ function openScriptPage () {
     window.open(`/script.php?id=${sid}`, "_blank", strWindowFeatures);
 }
 
+function createRowBelow(currentOrder) {
+    sendWs({
+        type: Events.CREATE_ROW,
+        scheduleId: state.schedule.id,
+        order: currentOrder + 1
+    });
+}
+
+function deleteRow(rowId) {
+    sendWs({
+        type: Events.DELETE_ROW,
+        rowId,
+        scheduleId: state.schedule.id
+    })
+}
+
 function renderRow(row) {
     let tr = document.querySelector(`tr[data-row="${row.id}"]`);
 
@@ -181,8 +234,11 @@ function renderRow(row) {
                 y: e.clientY,
                 items: [
                     { label: "Edit Script", action: () => openScriptPage() },
+                    { label: "Set Active", action: () => setActive(row.id) },
                     //{ label: "Rename", action: renameFn },
                     { type: "separator" },
+                    { label: "New Row Below", action: () => createRowBelow(row.order)},
+                    { label: "Delete", action: () => deleteRow(row.id), danger: true}
                 ]
             });
         })
@@ -197,7 +253,7 @@ function renderRow(row) {
 
         /* -------- TOP FIELDS -------- */
 
-        if (["title","page","script","duration"].includes(key)) {
+        if (["title","page","script","duration", "order"].includes(key)) {
 
             const input =
                 key === "duration"
@@ -330,3 +386,17 @@ function safeJson(str) {
 /* ---------------- INIT ---------------- */
 
 connectWs();
+
+
+
+
+document.getElementById("select-schedule-load")
+    .addEventListener("selected", e => {
+        console.log("User picked:", e.detail);
+        console.log("Attempting to load schedule ")
+
+        sendWs({
+            type: Events.REQUEST_LOAD,
+            scheduleId: Number(e.detail.id)
+        })
+    });

@@ -99,6 +99,7 @@ object ScheduleRepository {
             duration = row[RowsTable.duration],
             script = row[RowsTable.script],
             cells = row[RowsTable.cells],
+            order = row[RowsTable.order],
         )
     }
 }

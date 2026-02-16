@@ -63,7 +63,7 @@ export function showContextMenu({ x, y, items = [] }) {
     });
 
     // Measure after render
-    menuEl.style.display = "block";
+    menuEl.style.display = "flex";
     const rect = menuEl.getBoundingClientRect();
     const pos = clampMenu(x, y, rect.width + 16, rect.height);
 
