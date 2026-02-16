@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Teleprompter</title>
+
+    <style>
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Stage */
+        .stage {
+            position: absolute;
+            inset: 0;
+            padding: 40px 30px 80px 30px;
+        }
+
+        /* Track moves with translateY */
+        .track {
+            will-change: transform;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .row {
+            margin: 0 auto 30px auto;
+            max-width: 1100px;
+            font-size: 100px;
+            font-weight: 800;
+            line-height: 1.25;
+            word-break: break-word;
+            white-space: normal;
+            display: flex;
+            flex-direction: column;
+            margin-block: 50px;
+            align-items: start;
+            justify-content: start;
+        }
+
+        /* PAGE = white bg black text */
+        .page {
+            background: #fff;
+            color: #000;
+            font-weight: 900;
+            padding: 6px 14px;
+            margin-right: 18px;
+            letter-spacing: 0.025em;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        /* SCRIPT = black bg white text */
+        .script {
+            background: #000;
+            color: #fff;
+            letter-spacing: 0.025em;
+        }
+
+        /* small screens */
+        @media (max-width: 720px) {
+            .page { font-size: 42px; }
+            .script { font-size: 32px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="stage">
+    <div class="track" id="track"></div>
+</div>
+
+<script>
+    /* ---------------- CONFIG ---------------- */
+
+    let speed = 0;        // -100 to 100
+    let velocity = 0;      // px/sec
+    let y = 0;
+    let lastT = performance.now();
+
+    /* ---------------- DOM ---------------- */
+
+    const track = document.getElementById("track");
+
+    /* ---------------- FETCH SCHEDULE ---------------- */
+
+    async function loadSchedule() {
+        const params = new URLSearchParams(location.search);
+        const id = params.get("id") || "1";
+
+        try {
+            const res = await fetch(`/api/schedule/${id}`);
+            const data = await res.json();
+
+            renderSchedule(data);
+        } catch (e) {
+            console.error("Failed to load schedule", e);
+        }
+    }
+
+    /* ---------------- RENDER ---------------- */
+
+    function renderSchedule(schedule) {
+        track.innerHTML = "";
+
+        (schedule.rows || []).forEach(row => {
+            const rowEl = document.createElement("div");
+            rowEl.className = "row";
+
+            const page = escapeHtml(row.page + " - " + row.title);
+            const script = escapeHtml(row.script ?? row.cells?.script?.value ?? "");
+
+            rowEl.innerHTML = `
+  <span class="page">${page}</span>
+  <span class="script">${script}</span>
+`;
+
+            track.appendChild(rowEl);
+        });
+    }
+
+    /* ---------------- SCROLL PHYSICS ---------------- */
+
+    function clampScroll() {
+        const stageH = window.innerHeight;
+        const contentH = track.scrollHeight;
+
+        const minY = Math.min(0, stageH - contentH - 40);
+        const maxY = 0;
+
+        if (y < minY) y = minY;
+        if (y > maxY) y = maxY;
+    }
+
+    function applyTransform() {
+        track.style.transform = `translate3d(0, ${y}px, 0)`;
+    }
+
+    function tick(now) {
+        const dt = Math.min(0.5, (now - lastT) / 1000);
+        lastT = now;
+
+        console.log(speed)
+
+        // speed always active except 0
+        const targetVelocity = -speed * 10; // scale factor
+
+        // smooth velocity blend
+        velocity += (targetVelocity - velocity) * (1 - Math.exp(-8 * dt));
+
+        y += velocity * dt;
+
+        clampScroll();
+        applyTransform();
+
+        requestAnimationFrame(tick);
+    }
+
+    /* ---------------- INPUT ---------------- */
+
+    // Space = instant stop
+    window.addEventListener("keydown", e => {
+        if (e.code === "Space") {
+            e.preventDefault();
+            speed = 0;
+            velocity = 0;
+        }
+
+        // Arrow Up / Down change speed
+        if (e.code === "ArrowUp" || e.code === "KeyS") {
+            speed = Math.min(500, speed + 5);
+        }
+
+        if (e.code === "ArrowDown" || e.code === "KeyW") {
+            speed = Math.max(-500, speed - 5);
+        }
+    });
+
+    // Mouse wheel adjusts speed
+    window.addEventListener("wheel", e => {
+        speed += e.deltaY * -0.05;
+        speed = Math.max(-500, Math.min(500, speed));
+    }, { passive: true });
+
+    /* ---------------- UTILS ---------------- */
+
+    function escapeHtml(str) {
+        return String(str)
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
+    /* ---------------- BOOT ---------------- */
+
+    loadSchedule();
+    requestAnimationFrame(tick);
+
+</script>
+</body>
+</html>
