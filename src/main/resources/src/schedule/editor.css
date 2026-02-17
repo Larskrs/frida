@@ -8,6 +8,7 @@
     --muted: #8c8f99;
     --accent: #5b7cff;
 
+    --blue: #2057ff;
     --green: #4cff74;
     --yellow: #ffb454;
     --red: #ff5c5c;
@@ -210,10 +211,10 @@ td > input {
 }
 
 .active td:first-child {
-    border-left: 4px solid var(--yellow) !important;
+    border-left: 4px solid var(--blue) !important;
 }
 .active td {
-    background: #574837 !important;
+    background: #13172c !important;
 }
 
 td > input:focus {

@@ -416,6 +416,9 @@ document.getElementById("select-schedule-load")
         console.log("User picked:", e.detail);
         console.log("Attempting to disconnect from current Socket")
 
+        const url = new URL(window.location.href);
+        url.searchParams.set("id", e.detail.id);
+        window.history.replaceState({}, "", url);
         state.ws.close()
 
         connectWs(e.detail.id)
