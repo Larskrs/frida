@@ -27,11 +27,12 @@
             will-change: transform;
             display: flex;
             flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            width: 100%;
         }
 
         .row {
-            margin: 0 auto 30px auto;
-            max-width: 1100px;
             font-size: 100px;
             font-weight: 800;
             line-height: 1.25;
@@ -39,9 +40,9 @@
             white-space: normal;
             display: flex;
             flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
             margin-block: 50px;
-            align-items: start;
-            justify-content: start;
         }
 
         .page {
@@ -51,13 +52,16 @@
             padding: 6px 14px;
             letter-spacing: 0.025em;
             text-transform: uppercase;
-            width: 100%;
+            width: fit-content;
+            font-size: 10vh;
         }
 
         .script {
             background: #000;
             color: #fff;
-            letter-spacing: 0.025em;
+            font-weight: 500;
+            font-size: 15vh;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         @media (max-width: 720px) {
