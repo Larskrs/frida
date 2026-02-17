@@ -98,7 +98,8 @@
         ws: null,
         reconnectTimer: null,
         previousRows: new Map(), // rowId -> row
-        activeRowId: null
+        activeRowId: null,
+        currentRowIndex: 0,
     };
 
     /* ---------------- DOM ---------------- */
@@ -292,20 +293,41 @@
     /* ---------------- INPUT ---------------- */
 
     window.addEventListener("keydown", e => {
+
+        if (e.code === "ArrowRight") {
+            jumpToRow(state.currentRowIndex + 1);
+        }
+
+        if (e.code === "ArrowLeft") {
+            jumpToRow(state.currentRowIndex - 1);
+        }
+
         if (e.code === "Space") {
-            e.preventDefault();
             speed = 0;
             velocity = 0;
         }
 
-        if (e.code === "ArrowUp" || e.code === "KeyS") {
-            speed = Math.min(500, speed + 5);
-        }
-
-        if (e.code === "ArrowDown" || e.code === "KeyW") {
-            speed = Math.max(-500, speed - 5);
-        }
+        if (e.code === "ArrowDown") speed += 5;
+        if (e.code === "ArrowUp") speed -= 5;
     });
+
+    function jumpToRow(index) {
+        console.log("Attempting to jump to " + index)
+        if (!state.previousRows.size) return;
+
+        index = Math.max(0, Math.min(state.previousRows.size - 1, index));
+        state.currentRowIndex = index;
+
+        const el = track.children[index];
+        if (!el) return;
+
+        const rect = el.getBoundingClientRect();
+        const offsetTop = el.offsetTop;
+
+        y = -offsetTop + 40; // top padding
+        velocity = 0;
+        applyTransform();
+    }
 
     window.addEventListener("wheel", e => {
         speed += e.deltaY * -0.05;
