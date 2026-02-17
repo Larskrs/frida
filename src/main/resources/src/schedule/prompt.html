@@ -17,14 +17,12 @@
             overflow: hidden;
         }
 
-        /* Stage */
         .stage {
             position: absolute;
             inset: 0;
             padding: 40px 30px 80px 30px;
         }
 
-        /* Track moves with translateY */
         .track {
             will-change: transform;
             display: flex;
@@ -46,26 +44,22 @@
             justify-content: start;
         }
 
-        /* PAGE = white bg black text */
         .page {
             background: #fff;
             color: #000;
             font-weight: 900;
             padding: 6px 14px;
-            margin-right: 18px;
             letter-spacing: 0.025em;
             text-transform: uppercase;
             width: 100%;
         }
 
-        /* SCRIPT = black bg white text */
         .script {
             background: #000;
             color: #fff;
             letter-spacing: 0.025em;
         }
 
-        /* small screens */
         @media (max-width: 720px) {
             .page { font-size: 42px; }
             .script { font-size: 32px; }
@@ -74,61 +68,193 @@
 </head>
 
 <body>
-
 <div class="stage">
     <div class="track" id="track"></div>
 </div>
 
 <script>
-    /* ---------------- CONFIG ---------------- */
+    /* ---------------- PARAMS ---------------- */
 
-    let speed = 0;        // -100 to 100
-    let velocity = 0;      // px/sec
-    let y = 0;
-    let lastT = performance.now();
+    const params = new URLSearchParams(location.search);
+    const scheduleId = Number(params.get("id") || 1);
+
+    /* ---------------- EVENTS ---------------- */
+
+    const Events = {
+        REQUEST_LOAD: "com.example.websocket.ScheduleEvent.RequestLoad",
+        ROW_EDIT: "com.example.websocket.ScheduleEvent.RowEdited",
+        CREATE_ROW: "com.example.websocket.ScheduleEvent.RowCreate",
+        DELETE_ROW: "com.example.websocket.ScheduleEvent.RowDelete",
+        ACTIVE_CHANGED: "com.example.websocket.ScheduleEvent.ActiveRowChanged"
+    };
+
+    /* ---------------- STATE ---------------- */
+
+    const state = {
+        ws: null,
+        reconnectTimer: null,
+        previousRows: new Map(), // rowId -> row
+        activeRowId: null
+    };
 
     /* ---------------- DOM ---------------- */
 
     const track = document.getElementById("track");
 
-    /* ---------------- FETCH SCHEDULE ---------------- */
+    /* ---------------- SCROLL CONFIG ---------------- */
 
-    async function loadSchedule() {
-        const params = new URLSearchParams(location.search);
-        const id = params.get("id") || "1";
+    let speed = 0;
+    let velocity = 0;
+    let y = 0;
+    let lastT = performance.now();
 
-        try {
-            const res = await fetch(`/api/schedule/${id}`);
-            const data = await res.json();
+    /* ---------------- WS ---------------- */
 
-            renderSchedule(data);
-        } catch (e) {
-            console.error("Failed to load schedule", e);
+    const WS_PATH = "/schedule/ws";
+    const RECONNECT_DELAY = 1000;
+
+    function getHost() {
+        if (location.toString().includes("RELOAD_ON_SAVE")) return "localhost";
+        return location.host;
+    }
+
+    function sendWs(payload) {
+        if (state.ws?.readyState === WebSocket.OPEN) {
+            state.ws.send(JSON.stringify(payload));
         }
+    }
+
+    function scheduleReconnect() {
+        if (state.reconnectTimer) return;
+        state.reconnectTimer = setTimeout(() => connectWs(scheduleId), RECONNECT_DELAY);
+    }
+
+    function connectWs(id) {
+        const url = `ws://${getHost()}${WS_PATH}/${id}`;
+        const ws = new WebSocket(url);
+        state.ws = ws;
+
+        ws.onopen = () => {
+            if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
+            sendWs({ type: Events.REQUEST_LOAD, scheduleId: id });
+        };
+
+        ws.onmessage = e => {
+            const event = safeJson(e.data);
+            if (!event?.type) return;
+
+            const type = event.type.split(".").pop();
+
+            switch (type) {
+                case "Load":
+                    handleLoad(event.schedule);
+                    break;
+
+                case "RowEdited":
+                    applyRowPatch(event);
+                    break;
+
+                case "RowCreate":
+                    handleRowCreate(event.row);
+                    break;
+
+                case "RowDelete":
+                    handleRowDelete(event.rowId);
+                    break;
+
+                case "ActiveRowChanged":
+                    state.activeRowId = event.rowId;
+                    break;
+            }
+        };
+
+        ws.onclose = scheduleReconnect;
+    }
+
+    /* ---------------- WS HANDLERS ---------------- */
+
+    function handleLoad(schedule) {
+        state.previousRows.clear();
+
+        (schedule.rows || []).forEach(r => {
+            state.previousRows.set(r.id, r);
+        });
+
+        renderEntireSchedule();
+    }
+
+    function handleRowCreate(row) {
+        state.previousRows.set(row.id, row);
+        renderEntireSchedule(); // ordering may change
+    }
+
+    function handleRowDelete(rowId) {
+        state.previousRows.delete(rowId);
+        const el = track.querySelector(`[data-row-id="${rowId}"]`);
+        if (el) el.remove();
+    }
+
+    function applyRowPatch(event) {
+        const { rowId, key, value, cell } = event;
+        if (!rowId) return;
+
+        const row = state.previousRows.get(rowId);
+        if (!row) return;
+
+        if (!cell) {
+            row[key] = value;
+        } else {
+            row.cells ??= {};
+            row.cells[key] = cell;
+        }
+
+        state.previousRows.set(rowId, row);
+        renderSpecificRow(rowId);
     }
 
     /* ---------------- RENDER ---------------- */
 
-    function renderSchedule(schedule) {
-        track.innerHTML = "";
+    function buildRowHtml(row) {
+        const page = escapeHtml((row.page || "") + " - " + (row.title || ""));
+        const script = escapeHtml(row.script ?? row.cells?.script?.value ?? "");
 
-        (schedule.rows || []).forEach(row => {
-            const rowEl = document.createElement("div");
-            rowEl.className = "row";
-
-            const page = escapeHtml(row.page + " - " + row.title);
-            const script = escapeHtml(row.script ?? row.cells?.script?.value ?? "");
-
-            rowEl.innerHTML = `
-  <span class="page">${page}</span>
-  <span class="script">${script}</span>
-`;
-
-            track.appendChild(rowEl);
-        });
+        return `
+        <span class="page">${page}</span>
+        <span class="script">${script}</span>
+    `;
     }
 
-    /* ---------------- SCROLL PHYSICS ---------------- */
+    function renderEntireSchedule() {
+        track.innerHTML = "";
+
+        const rows = Array.from(state.previousRows.values())
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        for (const row of rows) {
+            const el = document.createElement("div");
+            el.className = "row";
+            el.dataset.rowId = row.id;
+            el.innerHTML = buildRowHtml(row);
+            track.appendChild(el);
+        }
+    }
+
+    function renderSpecificRow(rowId) {
+        const row = state.previousRows.get(rowId);
+        if (!row) return;
+
+        const existing = track.querySelector(`[data-row-id="${rowId}"]`);
+
+        if (!existing) {
+            // row didn't exist → full rerender safer
+            renderEntireSchedule();
+            return;
+        }
+
+        existing.innerHTML = buildRowHtml(row);
+    }
+
+    /* ---------------- SCROLL ---------------- */
 
     function clampScroll() {
         const stageH = window.innerHeight;
@@ -149,14 +275,8 @@
         const dt = Math.min(0.5, (now - lastT) / 1000);
         lastT = now;
 
-        console.log(speed)
-
-        // speed always active except 0
-        const targetVelocity = -speed * 10; // scale factor
-
-        // smooth velocity blend
+        const targetVelocity = -speed * 10;
         velocity += (targetVelocity - velocity) * (1 - Math.exp(-8 * dt));
-
         y += velocity * dt;
 
         clampScroll();
@@ -167,7 +287,6 @@
 
     /* ---------------- INPUT ---------------- */
 
-    // Space = instant stop
     window.addEventListener("keydown", e => {
         if (e.code === "Space") {
             e.preventDefault();
@@ -175,7 +294,6 @@
             velocity = 0;
         }
 
-        // Arrow Up / Down change speed
         if (e.code === "ArrowUp" || e.code === "KeyS") {
             speed = Math.min(500, speed + 5);
         }
@@ -185,13 +303,17 @@
         }
     });
 
-    // Mouse wheel adjusts speed
     window.addEventListener("wheel", e => {
         speed += e.deltaY * -0.05;
         speed = Math.max(-500, Math.min(500, speed));
     }, { passive: true });
 
     /* ---------------- UTILS ---------------- */
+
+    function safeJson(str) {
+        try { return JSON.parse(str); }
+        catch { return null; }
+    }
 
     function escapeHtml(str) {
         return String(str)
@@ -204,7 +326,7 @@
 
     /* ---------------- BOOT ---------------- */
 
-    loadSchedule();
+    connectWs(scheduleId);
     requestAnimationFrame(tick);
 
 </script>

@@ -203,7 +203,7 @@ function renderHeader(columns) {
 function openScriptPage () {
     const sid = state.schedule?.id ?? 0;
     var strWindowFeatures = "location=yes,height=570,width=520,scrollbars=yes,status=yes"
-    window.open(`/script.php?id=${sid}`, "_blank", strWindowFeatures);
+    window.open(`/schedule/script.html?id=${sid}`, "_blank", strWindowFeatures);
 }
 
 function createRowBelow(currentOrder) {
