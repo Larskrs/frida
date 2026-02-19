@@ -247,6 +247,33 @@ tr:has(input:focus) td {
     text-decoration: none;
 }
 
+.header-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.indicator:before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    translate: 0 -50%;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    background: oklch(40% 75% var(--status-hue));
+}
+.indicator {
+    position: relative;
+    padding: 2px 8px 2px 24px;
+    font-size: 14px;
+    color: var(--muted);
+    background: var(--panel-2);
+    border-radius: 8px;
+    border: 1px solid oklch(30% 15% var(--status-hue));
+}
+
 /* Status text */
 
 .upcoming { color: var(--yellow); }

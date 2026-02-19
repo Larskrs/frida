@@ -31,7 +31,9 @@ const el = {
     windowNoSchedule: document.getElementById("window-no-shedule"),
     windowDisconnected: document.getElementById("window-disconnected"),
     // Links
-    promptLink: document.getElementById("prompt-link")
+    promptLink: document.getElementById("prompt-link"),
+    // indicators
+    websocketIndicator: document.getElementById("ws-indicator")
 };
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -85,6 +87,9 @@ function connectWs(scheduleId) {
         if (id > 0) {
             sendWs({ type: Events.REQUEST_LOAD, scheduleId: id });
         }
+
+        el.websocketIndicator.style.setProperty('--status-hue', '150')
+        el.websocketIndicator.textContent = "Listening for updates"
     };
 
     ws.onmessage = e => {
@@ -114,6 +119,8 @@ function scheduleReconnect() {
     if (state.reconnectTimer) return;
 
     state.reconnectTimer = setTimeout(connectWs, RECONNECT_DELAY);
+    el.websocketIndicator.style.setProperty('--status-hue', '150')
+    el.websocketIndicator.textContent = "Disconnected from server"
 }
 
 /* ---------------- LOAD / DIFF ---------------- */
