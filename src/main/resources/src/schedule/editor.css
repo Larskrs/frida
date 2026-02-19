@@ -236,6 +236,17 @@ tr:has(input:focus) td {
     font-size: 0.7em;
 }
 
+.link-btn {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border);
+    padding: 2px 6px;
+    color: white !important;
+    text-decoration: none;
+}
+
 /* Status text */
 
 .upcoming { color: var(--yellow); }

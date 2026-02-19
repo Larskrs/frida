@@ -17,6 +17,11 @@ object ScheduleStore {
 
     fun getAll(): List<Schedule> = schedules.values.toList()
 
+    fun reload (schedule: Schedule) {
+        schedules[schedule.id] = schedule
+        println("Updated schedule ${schedule.id}")
+    }
+
     fun create(id: Int, title: String): Schedule {
         val schedule = Schedule(
             rows = emptyList(),

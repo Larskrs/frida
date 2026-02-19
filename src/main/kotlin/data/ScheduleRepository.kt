@@ -56,6 +56,8 @@ object ScheduleRepository {
                 it[cells] = row.cells
             }
         }
+
+        ScheduleStore.reload(schedule)
     }
 
     /* -------------------- DELETE -------------------- */

@@ -27,8 +27,11 @@ const state = {
 const el = {
     body: document.getElementById("scheduleBody"),
     head: document.getElementById("scheduleHead"),
+    // Windows
     windowNoSchedule: document.getElementById("window-no-shedule"),
     windowDisconnected: document.getElementById("window-disconnected"),
+    // Links
+    promptLink: document.getElementById("prompt-link")
 };
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -120,6 +123,8 @@ function loadSchedule(schedule) {
     if (!schedule?.rows) return;
 
     state.schedule = schedule;
+
+    el.promptLink.href = `/schedule/prompt.html?id=${schedule.id}`
 
     /* -------- HEADER / COLUMNS -------- */
 

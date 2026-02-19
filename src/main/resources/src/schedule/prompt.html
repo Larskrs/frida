@@ -30,6 +30,7 @@
             align-items: flex-start;
             justify-content: flex-start;
             width: 100%;
+            padding-left: 48px;
         }
 
         .row {
@@ -64,6 +65,13 @@
             font-family: Arial, Helvetica, sans-serif;
         }
 
+        .arrow {
+            position: fixed;
+            left: 0;
+            top: 25%;
+            z-index: 100;
+        }
+
         @media (max-width: 720px) {
             .page { font-size: 42px; }
             .script { font-size: 32px; }
@@ -74,6 +82,11 @@
 <body>
 <div class="stage">
     <div class="track" id="track"></div>
+    <svg class="arrow" xmlns="http://www.w3.org/2000/svg" fill="#fff" width="120px" height="120px" viewBox="-2 0 32 32" version="1.1">
+        <title>next</title>
+        <path d="M0 24.781v-17.594l15.281 8.813z"/>
+        <path d="M0 24.781v-17.594l15.281 8.813z" class="arrow" />
+    </svg>
 </div>
 
 <script>
