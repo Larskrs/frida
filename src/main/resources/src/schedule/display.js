@@ -1,188 +1,141 @@
 import {
-  formatCell,
   cleanTxt,
   formatMillisTime,
-  parseTimeToTodayMillis,
   formatClock,
   getRowTiming,
   getRowAbsoluteStart,
   getRemainingMs,
-  formatMs,
   getElapsedMs,
   getDurationMs,
-  getCumulativeOffsetMs, startTicker, createIpBox
-} from "./utils.js?v=1";
+  startTicker,
+  createIpBox
+} from "./utils.js?v=2";
 
-let ws = null;
-let reconnectTimer = null;
+const WS_PATH = "/schedule/ws";
+const RECONNECT_DELAY = 5000;
 
-const urlParams = new URLSearchParams(window.location.search)
+const Events = {
+  REQUEST_LOAD: "com.example.websocket.ScheduleEvent.RequestLoad",
+};
 
-function connectWs() {
-  let host = location.host;
-  if (location.toString().includes("RELOAD_ON_SAVE")) {
-    host = "localhost";
+const state = {
+  ws: null,
+  reconnectTimer: null,
+  schedule: null,
+  activeRowId: null,
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+
+/* ---------------- WS ---------------- */
+
+function getHost() {
+  if (location.toString().includes("RELOAD_ON_SAVE")) return "localhost";
+  return location.host;
+}
+
+function sendWs(payload) {
+  if (state.ws?.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify(payload));
   }
+}
 
-  console.log("WS: connecting...");
-  ws = new WebSocket("ws://" + host + "/schedule/ws");
+function connectWs(scheduleId) {
+  const ws = new WebSocket(`ws://${getHost()}${WS_PATH}/${scheduleId}`);
+  state.ws = ws;
 
   ws.onopen = () => {
-    console.log("WS: connected");
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
     }
 
-    if (urlParams.has("id")) {
-      const id = Number(urlParams.get("id")) ?? 0
-      if (id === 0) return
-
-      ws.send(JSON.stringify({
-        type: "com.example.websocket.ScheduleEvent.RequestLoad",
-        scheduleId: id
-      }))
-    }
+    sendWs({
+      type: Events.REQUEST_LOAD,
+      scheduleId
+    });
   };
 
   ws.onmessage = e => {
-    const event = JSON.parse(e.data);
-    console.log("this was triggered")
-    switch (event.type.split(".").pop()) {
+    const event = safeJson(e.data);
+    if (!event?.type) return;
 
+    const type = event.type.split(".").pop();
+
+    switch (type) {
       case "Load":
-        alert("Attempting to load")
-        schedule = event.schedule;
-        activeRowId = schedule?.activeRowId ?? null;
+        state.schedule = event.schedule;
+        state.activeRowId = event.schedule?.activeRowId ?? null;
         render();
         break;
 
       case "ActiveRowChanged":
-        activeRowId = event.rowId;
-
-        if (schedule?.rows) {
-          const row = schedule.rows.find(c => c.id === event.rowId);
-          if (row) row.activatedAt = event.activatedAt;
-        }
-
-        render();
+        handleActiveChanged(event);
         break;
 
-      case "rowEdited":
-        applyEdit(event);
-        render();
+      case "RowEdited":
+        applyRowPatch(event);
+        break;
+
+      case "RowCreate":
+      case "RowDelete":
+      case "StartProgramAtRow":
+        // safest: reload entire schedule snapshot
+        sendWs({
+          type: Events.REQUEST_LOAD,
+          scheduleId: state.schedule.id
+        });
         break;
     }
   };
 
-  ws.onerror = err => {
-    console.warn("WS: error", err);
-    // onclose will handle reconnect
-  };
-
-  ws.onclose = () => {
-    console.warn("WS: closed — retrying in 10s");
-    scheduleReconnect();
-  };
+  ws.onclose = () => scheduleReconnect(scheduleId);
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer) return; // already waiting
+function scheduleReconnect(scheduleId) {
+  if (state.reconnectTimer) return;
 
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connectWs();
-  }, 10_000);
+  state.reconnectTimer = setTimeout(() => {
+    state.reconnectTimer = null;
+    connectWs(scheduleId);
+  }, RECONNECT_DELAY);
 }
 
-// start first connection
-connectWs();
+/* ---------------- EVENT HANDLERS ---------------- */
 
-let schedule = null;
-let activeRowId = null;
+function handleActiveChanged(event) {
+  const { rowId, activatedAt } = event;
+  state.activeRowId = rowId;
 
-/* -------------------- WS -------------------- */
+  const row = state.schedule?.rows?.find(r => r.id === rowId);
+  if (row) row.activatedAt = activatedAt;
 
-ws.onmessage = e => {
-  const event = JSON.parse(e.data);
-  console.log(event?.type?.split(".")?.pop())
-  switch (event.type.split(".").pop()) {
-
-    case "Load":
-      schedule = event.schedule;
-      activeRowId = schedule?.activeRowId ?? null;
-      render();
-      break;
-
-    case "ActiveRowChanged":
-      activeRowId = event.rowId;
-
-      if (schedule?.rows) {
-        const row = schedule.rows.find(c => c.id === event.rowId);
-        if (row) {
-          row.activatedAt = event.activatedAt;
-        }
-      }
-
-      render();
-      break;
-
-    case "RowEdited":
-      schedule = event.schedule;
-      activeRowId = schedule?.activeRowId ?? null;
-      render();
-      break;
-  }
-};
-
-/* -------------------- AUTO RENDER -------------------- */
-
-startTicker(250, () => render())
-
-/* -------------------- TIMING -------------------- */
-
-function getProgressPercent(row) {
-  const duration = getDurationMs(row);
-  if (!duration || duration <= 0) return 0;
-
-  const elapsed = getElapsedMs(row);
-  return getProgress(duration, elapsed)
-}
-function getProgress(duration, elapsed) {
-  return (elapsed / duration) * 100; // allow >100 when late
+  render();
 }
 
-/* -------------------- EDIT -------------------- */
-
-function applyEdit(event) {
-  if (!schedule?.rows) return;
-
-  const row = schedule.rows.find(c => c.id === event.rowId);
+function applyRowPatch(event) {
+  const { rowId, key, value, cell } = event;
+  const row = state.schedule?.rows?.find(r => r.id === rowId);
   if (!row) return;
 
-  row.cells = row.cells || {};
-  row.cells[event.key] = event.value;
-}
-
-function getActiveIndex() {
-  if (!schedule?.rows?.length) return -1;
-
-  if (activeRowId) {
-    return schedule.rows.findIndex(c => c.id === activeRowId);
+  if (!cell) {
+    row[key] = value;
+  } else {
+    if (!row.cells) row.cells = {};
+    row.cells[key] = cell;
   }
 
-  // Pre-start fallback
-  const now = Date.now();
-  const programStart = schedule.programStart ?? null;
-  if (programStart && now < programStart) return 0;
-
-  return 0;
+  render();
 }
 
-/* -------------------- RENDER -------------------- */
+/* ---------------- AUTO RENDER ---------------- */
+
+startTicker(250, () => render());
+
+/* ---------------- RENDER ---------------- */
 
 function render() {
-  if (!schedule || !schedule.rows) return;
+  if (!state.schedule?.rows) return;
 
   const titleEl = document.getElementById("title");
   const timingEl = document.getElementById("timing");
@@ -191,17 +144,16 @@ function render() {
   const pageEl = document.getElementById("tinyId");
   const offsetTimeEl = document.getElementById("offsetTime");
   const notesEl = document.getElementById("notes");
-  const detailsContainer = document.getElementById("details")
 
+  const schedule = state.schedule;
   const now = Date.now();
+
+  let row = schedule.rows.find(r => r.id === state.activeRowId);
+
   const programStart = schedule.programStart ?? null;
-
-  let row = schedule.rows.find(c => c.id === activeRowId);
-
-  // PRE-START MODE
   const isPreStart =
       programStart &&
-      !activeRowId &&
+      !state.activeRowId &&
       schedule.rows.length > 0 &&
       now < programStart;
 
@@ -209,46 +161,28 @@ function render() {
     row = schedule.rows[0];
   }
 
-  const t = getRowTiming(row, schedule)
+  if (!row) return;
 
-  if (!row) {
-    pageEl.textContent = "—";
-    titleEl.textContent = "No Active row";
-    timingEl.textContent = "--:--";
-    timingEl.className = "timing";
-    if (progressEl) progressEl.style.width = "0%";
-    return;
-  }
-  titleEl.textContent = cleanTxt(row.title) ?? "";
+  const t = getRowTiming(row, schedule);
 
-  const remaining = getRemainingMs(row);
+  titleEl.textContent = cleanTxt(row.title ?? "");
+  pageEl.textContent = row.page ?? "—";
+
+  /* -------- Notes -------- */
 
   const notes = row.cells?.["stikkord"]?.value ?? "";
-  console.log(`notes: ${notes}`)
-  notesEl.textContent = cleanTxt(notes)
+  notesEl.textContent = cleanTxt(notes);
 
-
-  titleEl.textContent =
-      cleanTxt(row.title)
-
-  /* -------- ips -------- */
+  /* -------- IPs -------- */
 
   ipContainer.innerHTML = "";
-
-// Define which cell keys should render as IP boxes
-// You can add as many as you want here
-  const ipKeys = [
-    "ip1",
-    "ip2",
-  ];
-
+  const ipKeys = ["ip1", "ip2"];
   let foundAny = false;
 
   for (const key of ipKeys) {
-    const value = row.cells[key]?.value;
+    const value = row.cells?.[key]?.value;
     if (!value) continue;
 
-    // Support comma-separated lists too
     const values = String(value)
         .split(",")
         .map(v => v.trim())
@@ -260,91 +194,85 @@ function render() {
     }
   }
 
-// Fallback if nothing rendered
   if (!foundAny) {
     ipContainer.appendChild(createIpBox("—"));
   }
 
-  /* -------- Page -------- */
+  /* -------- Offset -------- */
 
-  pageEl.textContent = row.page ?? "—";
-
-  /* -------- Offset time -------- */
-
-  offsetTimeEl.classList.remove("early", "late", "ontime");
-
+  offsetTimeEl.className = "";
   if (!t.abs) {
     offsetTimeEl.textContent = "-";
   } else if (t.delay === 0) {
     offsetTimeEl.textContent = "ON TIME";
     offsetTimeEl.classList.add("ontime");
   } else {
-    const sign = t.delay > 0 ? "+" : "-"
-    offsetTimeEl.textContent = `${sign}${formatMillisTime(Math.abs(t.delay))}`;
+    const sign = t.delay > 0 ? "+" : "-";
+    offsetTimeEl.textContent =
+        `${sign}${formatMillisTime(Math.abs(t.delay))}`;
+    offsetTimeEl.classList.add(t.delay > 0 ? "late" : "early");
   }
-
-  if (t.delay > 0) offsetTimeEl.classList.add("late");
-  if (t.delay < 0) offsetTimeEl.classList.add("early");
-
 
   /* -------- Progress -------- */
 
+  const remaining = getRemainingMs(row);
+
   if (progressEl) {
     const elapsed = getElapsedMs(row);
-    const duration = row.duration;
+    const duration = getDurationMs(row);
 
-    const percent = getProgress(duration, elapsed);
+    const percent = duration > 0
+        ? (elapsed / duration) * 100
+        : 0;
+
     progressEl.style.width = Math.min(percent, 100) + "%";
 
     if (remaining < 0) {
       progressEl.classList.add("late");
-      progressEl.classList.remove("ontime")
     } else {
       progressEl.classList.remove("late");
-      progressEl.classList.add("ontime")
     }
   }
 
-  /* -------- Timing Text -------- */
-
-  timingEl.className = "timing";
+  /* -------- Timing -------- */
 
   if (remaining == null) {
     timingEl.textContent = "--:--";
     return;
   }
 
+  timingEl.className = "timing";
+
   if (remaining >= 0) {
     timingEl.textContent = formatClock(remaining);
     timingEl.classList.add("ontime");
   } else {
-    timingEl.textContent = "-" + formatClock(Math.abs(remaining));
+    timingEl.textContent =
+        "-" + formatClock(Math.abs(remaining));
     timingEl.classList.add("late");
   }
 
   renderUpcoming();
 }
 
+/* ---------------- UPCOMING ---------------- */
+
 function renderUpcoming() {
   const container = document.getElementById("upcomingContainer");
-  if (!container || !schedule?.rows) return;
+  if (!container || !state.schedule?.rows) return;
 
   container.innerHTML = "";
 
-  const activeIndex = getActiveIndex();
-  if (activeIndex < 0) return;
+  const rows = state.schedule.rows;
+  const activeIndex = rows.findIndex(r => r.id === state.activeRowId);
 
-  const upcoming = schedule.rows.slice(activeIndex + 1);
-
-  console.log(upcoming)
+  const upcoming = activeIndex >= 0
+      ? rows.slice(activeIndex + 1)
+      : [];
 
   for (const row of upcoming) {
-    const rowEl = document.createElement("tr");
-    rowEl.className = "upcoming-row";
-
-    const ipContainer = document.createElement("td");
-    ipContainer.className = "upcoming-ips";
-
+    const tr = document.createElement("tr");
+    tr.className = "upcoming-row";
 
     const page = document.createElement("td");
     page.className = "upcoming-page";
@@ -354,15 +282,11 @@ function renderUpcoming() {
     title.className = "upcoming-title";
     title.textContent = cleanTxt(row.title);
 
-    if (row.cells?.["Break"]?.value == 1) {
-      rowEl.className = "upcoming-row break"
-    }
-
     const time = document.createElement("td");
     time.className = "upcoming-time";
 
-    const absStart = getRowAbsoluteStart(row, schedule);
-    const t = getRowTiming(row, schedule)
+    const absStart = getRowAbsoluteStart(row, state.schedule);
+
     if (!absStart) {
       time.textContent = "--:--";
     } else {
@@ -373,9 +297,25 @@ function renderUpcoming() {
               : "-" + formatClock(Math.abs(msUntil));
     }
 
-    rowEl.appendChild(page)
-    rowEl.appendChild(title);
-    rowEl.appendChild(time);
-    container.appendChild(rowEl);
+    if (row.cells?.["Break"]?.value == 1) {
+      tr.classList.add("break");
+    }
+
+    tr.appendChild(page);
+    tr.appendChild(title);
+    tr.appendChild(time);
+    container.appendChild(tr);
   }
 }
+
+/* ---------------- UTIL ---------------- */
+
+function safeJson(str) {
+  try { return JSON.parse(str); }
+  catch { return null; }
+}
+
+/* ---------------- INIT ---------------- */
+
+const scheduleId = urlParams.get("id");
+if (scheduleId) connectWs(scheduleId);

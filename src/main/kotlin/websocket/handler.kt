@@ -46,7 +46,6 @@ suspend fun broadcast(scheduleId: Int, event: ScheduleEvent) {
 
 suspend fun initialLoad (scheduleId: Int, session: DefaultWebSocketServerSession) {
     val schedule = ScheduleStore.get(scheduleId)
-        ?: ScheduleRepository.get(scheduleId)
 
     val payload: ScheduleEvent = ScheduleEvent.Load(scheduleId, schedule)
     session.send(Frame.Text(json.encodeToString(payload)))
@@ -73,8 +72,6 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     val current = ScheduleStore.get(event.scheduleId)
                         ?: ScheduleRepository.get(event.scheduleId)
                         ?: continue
-
-
 
                     val updatedRows = current.rows.map { row ->
                         if (row.id != event.rowId) return@map row
