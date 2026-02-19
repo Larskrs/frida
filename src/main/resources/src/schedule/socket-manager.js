@@ -1,13 +1,12 @@
 const DEFAULTS = {
-    baseDelay: 1000,
-    maxDelay: 10000,
+    retryDelay: 5000,
     debug: false
 };
 
 export class WebSocketManager {
 
     constructor(pathBuilder, options = {}) {
-        this.pathBuilder = pathBuilder; // function (id) => ws url
+        this.pathBuilder = pathBuilder;
         this.options = { ...DEFAULTS, ...options };
 
         this.socket = null;
@@ -17,7 +16,6 @@ export class WebSocketManager {
         this.isConnecting = false;
 
         this.reconnectTimer = null;
-        this.reconnectAttempts = 0;
 
         this.listeners = {
             open: new Set(),
@@ -52,18 +50,24 @@ export class WebSocketManager {
 
         this.socket.onopen = () => {
             this.isConnecting = false;
-            this.reconnectAttempts = 0;
             this.#clearReconnect();
+
+            if (this.options.debug) {
+                console.log("[WS] Connected");
+            }
 
             this.#emit("open");
         };
 
         this.socket.onmessage = (e) => {
-            let parsed = null;
-            try { parsed = JSON.parse(e.data); }
-            catch { return; }
-
-            this.#emit("message", parsed);
+            try {
+                const parsed = JSON.parse(e.data);
+                this.#emit("message", parsed);
+            } catch {
+                if (this.options.debug) {
+                    console.warn("[WS] Invalid JSON");
+                }
+            }
         };
 
         this.socket.onerror = (err) => {
@@ -76,6 +80,10 @@ export class WebSocketManager {
             if (this.manualClose) {
                 this.manualClose = false;
                 return;
+            }
+
+            if (this.options.debug) {
+                console.log("[WS] Closed — scheduling retry");
             }
 
             this.#emit("close");
@@ -110,26 +118,18 @@ export class WebSocketManager {
     #startReconnect() {
         if (this.reconnectTimer) return;
 
-        const delay = Math.min(
-            this.options.baseDelay * Math.pow(2, this.reconnectAttempts),
-            this.options.maxDelay
-        );
-
-        this.reconnectAttempts++;
-
         if (this.options.debug) {
-            console.log(`[WS] Reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+            console.log(`[WS] Retrying in ${this.options.retryDelay}ms`);
         }
 
         this.#emit("reconnect", {
-            attempt: this.reconnectAttempts,
-            delay
+            delay: this.options.retryDelay
         });
 
         this.reconnectTimer = setTimeout(() => {
             this.#clearReconnect();
             this.connect(this.id);
-        }, delay);
+        }, this.options.retryDelay);
     }
 
     #clearReconnect() {

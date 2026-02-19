@@ -5,8 +5,7 @@ import {
 } from "./utils.js?v=2";
 import { DurationInput, TimeInput } from "./components/time-input.js";
 import {showToast} from "./components/toast.js";
-
-const WS_PATH = "/schedule/ws";
+import {WebSocketManager} from "./socket-manager.js";
 
 const Events = {
     REQUEST_LOAD: "com.example.websocket.ScheduleEvent.RequestLoad",
@@ -36,6 +35,7 @@ const el = {
     websocketIndicator: document.getElementById("ws-indicator")
 };
 
+
 const urlParams = new URLSearchParams(window.location.search);
 
 const nonInteractibleKeys = ["activatedAt"]
@@ -43,148 +43,45 @@ const nonInteractibleKeys = ["activatedAt"]
 
 /* ---------------- WS ---------------- */
 
-const RECONNECT_BASE_DELAY = 1000;     // 1s
-const RECONNECT_MAX_DELAY = 10000;     // 10s
+const socket = new WebSocketManager(
+    (id) => `ws://${location.host}/schedule/ws/${id}`,
+    { debug: true }
+);
 
-const wsState = {
-    socket: null,
-    scheduleId: null,
-    reconnectTimer: null,
-    reconnectAttempts: 0,
-    manualClose: false,
-    isConnecting: false
-};
+socket.connect(urlParams.get("id"))
 
-function getHost() {
-    if (location.toString().includes("RELOAD_ON_SAVE")) return "localhost";
-    return location.host;
-}
-
-function sendWs(payload) {
-    if (wsState.socket?.readyState === WebSocket.OPEN) {
-        wsState.socket.send(JSON.stringify(payload));
-    }
-}
-
-function connectWs(scheduleId) {
-
-    if (!scheduleId) return;
-    if (wsState.isConnecting) return;
-
-    wsState.isConnecting = true;
-    wsState.scheduleId = scheduleId;
-
-    // Close old socket cleanly
-    if (wsState.socket) {
-        wsState.manualClose = true;
-        wsState.socket.close();
-    }
-
-    const url = `ws://${getHost()}${WS_PATH}/${scheduleId}`;
-    console.info("Connecting to:", url);
-
-    const socket = new WebSocket(url);
-    wsState.socket = socket;
-
-    socket.onopen = () => {
-        wsState.isConnecting = false;
-        wsState.reconnectAttempts = 0;
-
-        clearReconnectTimer();
-
-        el.windowDisconnected.style.display = "none";
-        el.websocketIndicator.style.setProperty('--status-hue', '150');
-        el.websocketIndicator.textContent = "Listening for updates";
-
-        showToast({
-            title: "Connected",
-            message: "Connected to server",
-            type: "info"
-        });
-
-        sendWs({
-            type: Events.REQUEST_LOAD,
-            scheduleId
-        });
-    };
-
-    socket.onmessage = e => {
-        const event = safeJson(e.data);
-        if (!event?.type) return;
-
-        const type = event.type.split(".").pop();
-
-        if (type === "Load") loadSchedule(event.schedule);
-        if (type === "RowEdited") applyRowPatch(event);
-        if (type === "ActiveRowChanged") handleActiveRowChanged(event);
-    };
-
-    socket.onerror = () => {
-        // Let onclose handle reconnect
-    };
-
-    socket.onclose = () => {
-
-        wsState.isConnecting = false;
-
-        if (wsState.manualClose) {
-            wsState.manualClose = false;
-            return;
-        }
-
-        startReconnect();
-    };
-}
-
-function startReconnect() {
-
-    if (wsState.reconnectTimer) return;
-
-    el.windowDisconnected.style.display = "flex";
-    el.websocketIndicator.style.setProperty('--status-hue', '0');
-    el.websocketIndicator.textContent = "Disconnected from server";
-
-    showToast({
-        title: "Disconnected",
-        message: "WebSocket disconnected",
-        type: "error"
+socket.on("open", () => {
+    showToast({ title: "Connected", type: "info" });
+    socket.send({
+        type: Events.REQUEST_LOAD,
+        scheduleId
     });
 
-    const attemptReconnect = () => {
+    el.websocketIndicator.style.setProperty('--status-hue', "150")
+    el.websocketIndicator.textContent = "Live"
+});
 
-        const delay = Math.min(
-            RECONNECT_BASE_DELAY * Math.pow(2, wsState.reconnectAttempts),
-            RECONNECT_MAX_DELAY
-        );
+socket.on("message", (event) => {
 
-        wsState.reconnectAttempts++;
+    const type = event.type?.split(".").pop();
 
-        console.log(`Reconnect attempt ${wsState.reconnectAttempts} in ${delay}ms`);
+    if (type === "Load") loadSchedule(event.schedule);
+    if (type === "RowEdited") applyRowPatch(event);
+    if (type === "ActiveRowChanged") handleActiveRowChanged(event);
+});
 
-        wsState.reconnectTimer = setTimeout(() => {
-            clearReconnectTimer();
-            connectWs(wsState.scheduleId);
-        }, delay);
-    };
+socket.on("close", () => {
+    showToast({
+        title: "Disconnected",
+        type: "error"
+    });
+    el.websocketIndicator.style.setProperty('--status-hue', "0")
+    el.websocketIndicator.textContent = "Disconnected"
+});
 
-    attemptReconnect();
-}
-
-function clearReconnectTimer() {
-    if (wsState.reconnectTimer) {
-        clearTimeout(wsState.reconnectTimer);
-        wsState.reconnectTimer = null;
-    }
-}
-
-function disconnectWs() {
-    if (!wsState.socket) return;
-
-    wsState.manualClose = true;
-    clearReconnectTimer();
-    wsState.socket.close();
-}
-
+socket.on("reconnect", ({ attempt, delay }) => {
+    console.log(`Reconnecting in ${delay}ms (attempt ${attempt})`);
+});
 
 
 function handleActiveRowChanged(event) {
@@ -265,7 +162,7 @@ function rowsEqual(a, b) {
 }
 
 function setActive(rowId) {
-    sendWs({
+    socket.send({
         type: Events.ACTIVE_CHANGED,
         rowId,
         scheduleId: state.schedule.id
@@ -273,7 +170,7 @@ function setActive(rowId) {
 }
 
 function startProgramAtRow(rowId) {
-    sendWs({
+    socket.send({
         type: Events.START_PROGRAM_AT_ROW,
         rowId,
         scheduleId: state.schedule.id
@@ -328,7 +225,7 @@ function openScriptPage () {
 }
 
 function createRowBelow(currentOrder) {
-    sendWs({
+    socket.send({
         type: Events.CREATE_ROW,
         scheduleId: state.schedule.id,
         order: currentOrder + 1
@@ -336,7 +233,7 @@ function createRowBelow(currentOrder) {
 }
 
 function deleteRow(rowId) {
-    sendWs({
+    socket.send({
         type: Events.DELETE_ROW,
         rowId,
         scheduleId: state.schedule.id
@@ -403,7 +300,7 @@ function renderRow(row) {
             if (!nonInteractibleKeys.includes(key)) {
 
                 inputInstance.element.addEventListener("change", () => {
-                    sendWs({
+                    socket.send({
                         type: Events.ROW_EDIT,
                         scheduleId: state.schedule.id,
                         rowId: row.id,
@@ -442,7 +339,7 @@ function renderRow(row) {
                             ? Number(input.value)
                             : input.value;
 
-                sendWs({
+                socket.send({
                     type: Events.ROW_EDIT,
                     scheduleId: state.schedule.id,
                     rowId: row.id,
@@ -550,12 +447,7 @@ function safeJson(str) {
     catch { return null; }
 }
 
-
-
-/* ---------------- INIT ---------------- */
-
 let scheduleId = urlParams.get("id")
-connectWs(scheduleId);
 
 
 document.getElementById("select-schedule-load")
@@ -567,5 +459,6 @@ document.getElementById("select-schedule-load")
         url.searchParams.set("id", e.detail.id);
         window.history.replaceState({}, "", url);
 
-        connectWs(e.detail.id)
+        socket.disconnect()
+        socket.connect(e.detail.id)
     });
