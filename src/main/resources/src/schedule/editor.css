@@ -262,16 +262,17 @@ tr:has(input:focus) td {
     border-radius: 50%;
     width: 8px;
     height: 8px;
-    background: oklch(40% 75% var(--status-hue));
+    background: oklch(60% 100% var(--status-hue));
 }
 .indicator {
     position: relative;
     padding: 2px 8px 2px 24px;
     font-size: 14px;
-    color: var(--muted);
+    font-weight: 500;
+    color: oklch(60% 40% var(--status-hue));
     background: var(--panel-2);
     border-radius: 8px;
-    border: 1px solid oklch(30% 15% var(--status-hue));
+    border: 1px solid oklch(40% 50% var(--status-hue));
 }
 
 .window {

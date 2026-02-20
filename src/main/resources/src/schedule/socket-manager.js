@@ -63,9 +63,9 @@ export class WebSocketManager {
             try {
                 const parsed = JSON.parse(e.data);
                 this.#emit("message", parsed);
-            } catch {
+            } catch (err) {
                 if (this.options.debug) {
-                    console.warn("[WS] Invalid JSON");
+                    console.warn("[WS] Invalid JSON", err);
                 }
             }
         };

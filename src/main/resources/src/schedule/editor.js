@@ -32,7 +32,9 @@ const el = {
     // Links
     promptLink: document.getElementById("prompt-link"),
     // indicators
-    websocketIndicator: document.getElementById("ws-indicator")
+    websocketIndicator: document.getElementById("ws-indicator"),
+    // Buttons
+    createRowBtn: document.getElementById("create-new-row"),
 };
 
 
@@ -43,8 +45,13 @@ const nonInteractibleKeys = ["activatedAt"]
 
 /* ---------------- WS ---------------- */
 
+function getHost () {
+    return location.href.includes("RELOAD_ON_SAVE")
+    ? "localhost" : location.host
+}
+
 const socket = new WebSocketManager(
-    (id) => `ws://${location.host}/schedule/ws/${id}`,
+    (id) => `ws://${getHost()}/schedule/ws/${id}`,
     { debug: true }
 );
 
@@ -84,11 +91,8 @@ socket.on("reconnect", ({ attempt, delay }) => {
 });
 
 
-function handleActiveRowChanged(event) {
-
-    const { activatedAt, rowId } = event;
-    if (!rowId) return;
-
+function updateActiveRowUI(rowId, activatedAt) {
+    console.log(`Attemtping to activate row: ${rowId} ${activatedAt}`)
     // Remove previous active class
     if (state.activeRowId !== null) {
         const prevEl = document.querySelector(
@@ -112,7 +116,17 @@ function handleActiveRowChanged(event) {
 
     // Update state
     state.activeRowId = rowId;
-    state.schedule.rows[rowId].activatedAt = activatedAt;
+}
+
+function handleActiveRowChanged(event) {
+
+    const { activatedAt, rowId } = event;
+    if (!rowId) return;
+
+    updateActiveRowUI(rowId, activatedAt)
+
+    const rowIndex = state.schedule.rows.findIndex((row) => row.id === rowId)
+    state.schedule.rows[rowIndex].activatedAt = activatedAt;
 }
 
 
@@ -146,7 +160,7 @@ function loadSchedule(schedule) {
     newRows.forEach((row, id) => {
         const old = state.previousRows.get(id);
         if (!old || !rowsEqual(old, row)) {
-            renderRow(row);
+            renderRow(row, row.order);
         }
     });
 
@@ -155,6 +169,13 @@ function loadSchedule(schedule) {
     });
 
     state.previousRows = newRows;
+
+    /* Visualize activated Row */
+    const activatedAt = schedule?.rows?.find((row) => row.id === schedule?.activeRowId)?.activatedAt
+    const activeRowId = schedule.activeRowId
+    if (activeRowId && activatedAt) {
+        updateActiveRowUI(activeRowId, activatedAt)
+    }
 }
 
 function rowsEqual(a, b) {
@@ -240,7 +261,15 @@ function deleteRow(rowId) {
     })
 }
 
-function renderRow(row) {
+function rowIndex(id) {
+    return state.schedule.rows.findIndex((row) => row.id === id)
+}
+function rowAtOrder(order) {
+    if (!state?.schedule?.rows) { return null }
+    return state.schedule.rows.find((row) => row.order === order)
+}
+
+function renderRow(row, order = undefined) {
     let tr = document.querySelector(`tr[data-row="${row.id}"]`);
 
     if (!tr) {
@@ -266,7 +295,17 @@ function renderRow(row) {
             });
         })
 
-        el.body.appendChild(tr);
+        // Get element before its index (if exists) and use it as reference
+        const prevOrder = row.order-1
+        console.log(row.page + " prev: " + prevOrder)
+        if (prevOrder > 0) {
+            const adjacentRow = rowAtOrder(row.order-1)
+            console.log(adjacentRow)
+            const adjacentRowEl = document.querySelector(`tr[data-row="${adjacentRow.id}"]`);
+            adjacentRowEl.insertAdjacentElement("afterend", tr)
+        } else {
+            el.body.appendChild(tr)
+        }
     }
 
     tr.innerHTML = "";
@@ -462,3 +501,15 @@ document.getElementById("select-schedule-load")
         socket.disconnect()
         socket.connect(e.detail.id)
     });
+
+el.createRowBtn.addEventListener("click", e => {
+    const rows = state?.schedule?.rows ?? [];
+
+    if (rows.length === 0) {
+        createRowBelow(0);
+        return;
+    }
+
+    const highestOrder = Math.max(...rows.map(r => r.order));
+    createRowBelow(highestOrder);
+});
