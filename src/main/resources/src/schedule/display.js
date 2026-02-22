@@ -49,11 +49,6 @@ function connectWs(scheduleId) {
       clearTimeout(state.reconnectTimer);
       state.reconnectTimer = null;
     }
-
-    sendWs({
-      type: Events.REQUEST_LOAD,
-      scheduleId
-    });
   };
 
   ws.onmessage = e => {
@@ -80,11 +75,6 @@ function connectWs(scheduleId) {
       case "RowCreate":
       case "RowDelete":
       case "StartProgramAtRow":
-        // safest: reload entire schedule snapshot
-        sendWs({
-          type: Events.REQUEST_LOAD,
-          scheduleId: state.schedule.id
-        });
         break;
     }
   };

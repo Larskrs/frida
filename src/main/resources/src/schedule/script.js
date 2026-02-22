@@ -46,10 +46,6 @@ socket.connect(urlParams.get("id"))
 
 socket.on("open", () => {
     showToast({ title: "Connected", type: "info" });
-    socket.send({
-        type: Events.REQUEST_LOAD,
-        scheduleId
-    });
 });
 
 socket.on("message", (event) => {

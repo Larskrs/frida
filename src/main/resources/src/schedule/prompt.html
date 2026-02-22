@@ -154,7 +154,6 @@
 
         ws.onopen = () => {
             if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
-            sendWs({ type: Events.REQUEST_LOAD, scheduleId: id });
         };
 
         ws.onmessage = e => {

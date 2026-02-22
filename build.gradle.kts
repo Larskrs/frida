@@ -1,3 +1,5 @@
+import org.gradle.internal.classpath.Instrumented.systemProperty
+
 plugins {
     java
     alias(libs.plugins.kotlin.jvm)
@@ -7,12 +9,24 @@ plugins {
 }
 
 group = "com.example"
-version = "0.0.1"
+version = "0.0.2"
+
 
 val ktor_version = "2.3.9"
 
 application {
     mainClass.set("com.example.MainKt")
+    run {
+        systemProperty("frida.version", version as String?)
+    }
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes(
+            "Implementation-Version" to project.version
+        )
+    }
 }
 
 tasks.named<JavaExec>("run") {
@@ -42,6 +56,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-gson:3.4.0")
     implementation("io.ktor:ktor-server-content-negotiation:3.4.0")
     implementation("io.ktor:ktor-server-core:3.4.0")
+    implementation("io.ktor:ktor-client-cio:3.4.0")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
     implementation("com.charleskorn.kaml:kaml:0.104.0")

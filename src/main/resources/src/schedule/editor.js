@@ -59,11 +59,6 @@ socket.connect(urlParams.get("id"))
 
 socket.on("open", () => {
     showToast({ title: "Connected", type: "info" });
-    socket.send({
-        type: Events.REQUEST_LOAD,
-        scheduleId
-    });
-
     el.websocketIndicator.style.setProperty('--status-hue', "150")
     el.websocketIndicator.textContent = "Live"
 });
