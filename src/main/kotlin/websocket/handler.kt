@@ -1,23 +1,19 @@
 package com.example.websocket
 
-import com.example.config.ConfigManager
-import com.example.data.CellValue
-import com.example.data.Row
+import data.CellValue
+import data.Row
 import com.example.data.RowsTable
-import com.example.data.Schedule
+import data.Schedule
 import com.example.data.ScheduleRepository
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import com.example.data.ScheduleStore
-import com.example.data.loadColumnsFromRundown
 import com.example.nextFullSecond
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -27,7 +23,6 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import java.time.Instant
 
 val json = Json {
     ignoreUnknownKeys = true

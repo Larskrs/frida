@@ -4,6 +4,7 @@ import com.example.config.AppConfig
 import com.example.config.ConfigManager
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import data.CellValue
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -58,8 +59,8 @@ object DatabaseFactory {
         database = Database.connect(hikariSource)
 
         transaction(database) {
-            SchemaUtils.create(SchedulesTable, RowsTable)
-            SchemaUtils.addMissingColumnsStatements(SchedulesTable, RowsTable)
+            SchemaUtils.create(SchedulesTable, RowsTable, ColumnsTable)
+            SchemaUtils.addMissingColumnsStatements(SchedulesTable, RowsTable, ColumnsTable)
         }
     }
 }
@@ -84,6 +85,16 @@ object RowsTable : Table("rows") {
         "cells",
         kotlinx.serialization.json.Json
     )
+
+    override val primaryKey = PrimaryKey(id, scheduleId)
+}
+
+object ColumnsTable : Table("columns") {
+    val id = integer("id").autoIncrement()
+    val name = varchar("name", 255)
+    val order = integer("order")
+    val type = varchar("type", 255)
+    val scheduleId = reference("schedule_id", SchedulesTable)
 
     override val primaryKey = PrimaryKey(id, scheduleId)
 }

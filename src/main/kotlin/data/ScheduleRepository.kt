@@ -1,5 +1,7 @@
 package com.example.data
 
+import data.Row
+import data.Schedule
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -57,6 +59,18 @@ object ScheduleRepository {
             }
         }
 
+        ColumnsTable.deleteWhere { ColumnsTable.scheduleId eq scheduleId }
+
+        schedule.columns.forEachIndexed { index, column ->
+            ColumnsTable.insert {
+                it[id] = column.id
+                it[name] = column.name
+                it[order] = index
+                it[type] = column.type
+                it[ColumnsTable.scheduleId] = scheduleEntityId
+            }
+        }
+
         ScheduleStore.reload(schedule)
     }
 
@@ -85,11 +99,17 @@ object ScheduleRepository {
             .orderBy(RowsTable.order to SortOrder.ASC)
             .map { toRow(it) }
 
+        val columns = ColumnsTable
+            .select { ColumnsTable.scheduleId eq scheduleId }
+            .orderBy(ColumnsTable.order to SortOrder.ASC)
+            .map { toColumn(it) }
+
         return Schedule(
             id = scheduleId,
             name = row[SchedulesTable.name],
             programStart = row[SchedulesTable.programStart],
-            rows = rows
+            rows = rows,
+            columns = columns
         )
     }
 
@@ -102,6 +122,14 @@ object ScheduleRepository {
             script = row[RowsTable.script],
             cells = row[RowsTable.cells],
             order = row[RowsTable.order],
+        )
+    }
+    private fun toColumn(col: ResultRow): data.Column {
+        return data.Column(
+            id    = col[ColumnsTable.id],
+            name  = col[ColumnsTable.name],
+            type  = col[ColumnsTable.type],
+            order = col[ColumnsTable.order],
         )
     }
 }

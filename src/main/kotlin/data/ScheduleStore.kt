@@ -1,6 +1,8 @@
 package com.example.data
 
 import com.example.nextFullSecond
+import data.Row
+import data.Schedule
 import java.util.concurrent.ConcurrentHashMap
 
 object ScheduleStore {
@@ -25,6 +27,7 @@ object ScheduleStore {
     fun create(id: Int, title: String): Schedule {
         val schedule = Schedule(
             rows = emptyList(),
+            columns = emptyList(),
             name = title,
             id = id,
             programStart = nextFullSecond()

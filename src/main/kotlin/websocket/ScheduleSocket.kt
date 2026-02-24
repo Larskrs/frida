@@ -1,7 +1,8 @@
 package com.example.websocket
 
 import kotlinx.serialization.Serializable
-import com.example.data.*
+import data.CellValue
+import data.Schedule
 import kotlinx.serialization.json.JsonElement
 
 @Serializable

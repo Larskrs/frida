@@ -200,11 +200,9 @@ function buildColumns(schedule) {
     const topFields = [["title", "Text"], ["page", "Text"], ["duration", "Duration"], ["activatedAt", "Time"]];
     const cellKeys = new Map();
 
-    schedule.rows.forEach(row => {
-        Object.keys(row.cells || {}).forEach(k => {
-            cellKeys.set(   cleanTxt(k), row.cells[k].type);
-        });
-    });
+    schedule.columns.forEach(col => {
+        cellKeys.set(cleanTxt(col.name), col.type)
+    })
 
     console.log(cellKeys)
 

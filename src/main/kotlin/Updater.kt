@@ -10,7 +10,7 @@ object Updater {
     private const val OWNER = "Larskrs"
     private const val REPO = "frida"
     private const val API =
-        "https://api.github.com/repos/$OWNER/$REPO/releases/tags/Pre-Release"
+        "https://api.github.com/repos/$OWNER/$REPO/releases/latest"
 
     private val client = HttpClient()
 

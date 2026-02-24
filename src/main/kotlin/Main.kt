@@ -17,9 +17,9 @@ suspend fun main(args: Array<String>) {
     println("Booting application...")
     println("${Ansi.CYAN}FRIDA [${AppInfo.version}]${Ansi.RESET}")
 
-    val releaseInfo = Updater.check()
+//    val releaseInfo = Updater.check()
     println("Current version: ${AppInfo.version}")
-    println("Latest version: ${releaseInfo?.version}")
+//    println("Latest version: ${releaseInfo?.version}")
 
     DatabaseFactory.init()
 

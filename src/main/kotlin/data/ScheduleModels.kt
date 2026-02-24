@@ -1,4 +1,4 @@
-package com.example.data
+package data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,6 +9,7 @@ import java.time.Instant
 data class Schedule(
     val id: Int,
     val rows: List<Row>,
+    val columns: List<Column>,
     var activeRowId: Int? = null,
     var isArchived: Boolean = false,
     val name: String,
@@ -37,6 +38,13 @@ fun Row.absoluteStart(schedule: Schedule): Instant {
 
     return start.plusMillis(sum)
 }
+@Serializable
+data class Column(
+    val id: Int,
+    val name: String,
+    val type: String,
+    val order: Int,
+)
 
 fun Row.timeUntilStart(schedule: Schedule): Duration {
     val now = Instant.now()
