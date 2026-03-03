@@ -8,6 +8,12 @@ plugins {
     id("com.gradleup.shadow") version "9.0.0"
 }
 
+sourceSets.main {
+    resources {
+        srcDir(file("."))
+        include("frontend/dist/**")
+    }
+}
 group = "com.example"
 version = "0.0.2"
 

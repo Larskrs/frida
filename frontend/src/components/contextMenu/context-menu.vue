@@ -33,7 +33,7 @@ onBeforeUnmount(() => {
     <div
         v-if="state.visible"
         ref="menuRef"
-        class="context-menu rounded bg-bg shadow overflow-hidden"
+        class="context-menu rounded bg-surface shadow-md rounded-md overflow-hidden"
         :style="{
     position: 'fixed',
     left: state.x + 'px',
@@ -60,7 +60,7 @@ onBeforeUnmount(() => {
               class="w-4 h-4"
           />
 
-          <span class="flex-1">
+          <span class="flex-1 text-sm">
             {{ item.label }}
           </span>
         </button>

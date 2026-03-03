@@ -15,10 +15,7 @@ fun Route.scheduleRoutes() {
     staticResources("schedule", "src/schedule")
     staticResources("chat", "src/chat")
 
-    val distDir = File("frontend/dist")
-
-    staticFiles("/", distDir) {
-        // serves assets like /assets/...
+    staticResources("/", "frontend/dist") {
         default("index.html")
     }
 

@@ -1,13 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 @import "tailwindcss";
 
 :root {
   font-size: 18px;
+  font-family: Roboto, serif;
 
   /* ---------- SURFACES ---------- */
-  --color-bg: oklch(0.95 0.0025 93.5);
+  --color-bg: oklch(0.9818 0.0054 95.1);
   --color-surface: oklch(1 0.0025 93.5);
   --color-surface-elevated: oklch(1 0 0);
-  --color-muted: oklch(0.975 0.0025 93.5);
+  --color-muted: oklch(0.925 0.005 93.5);
 
   /* ---------- TEXT ---------- */
   --color-text: oklch(0.28 0.02 250);
@@ -20,7 +22,7 @@
   --color-border-focus: oklch(0.42 0.025 93.5);
 
   /* ---------- PRIMARY (Action Blue) ---------- */
-  --color-primary: oklch(0.4 0.025 93.5);
+  --color-primary: oklch(0.3 0.025 93.5);
   --color-primary-hover: oklch(0.55 0.17 250);
   --color-primary-muted: oklch(0.90 0.05 250);
 
@@ -124,8 +126,12 @@ td:first-child {
 td:last-child {
   border-right: 0;
 }
+th {
+  white-space: nowrap;
+}
 
 body {
+  font-family: Roboto, serif;
   margin: 0;
   min-height: 100vh;
   background: var(--color-bg);

@@ -41,6 +41,18 @@ export function useEditorSocket(socket: WebSocketManager<EditorEvent>) {
             case "ActiveRowChanged":
                 editorStore.activeRowId = event.rowId
                 break
+
+            case "ColumnEdited": {
+                const index = editorStore.columns.findIndex(c => c.columnId === event.columnId)
+                if (index === -1) return
+
+                editorStore.columns[index] = {
+                    ...editorStore.columns[index],
+                    name: event.name,
+                    type: event.type
+                }
+                break
+            }
         }
     })
 }
