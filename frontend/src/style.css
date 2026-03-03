@@ -98,5 +98,7 @@ body {
 }
 
 #app {
-  margin: 0 auto;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-bg);
 }

@@ -1,29 +1,30 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from "vue"
 import { useContextMenu } from "./useContextMenu"
+import { Icon } from "@iconify/vue"
 
 const { state, close } = useContextMenu()
 
 function onGlobalClick() {
-    close()
+  close()
 }
 
 function onKey(e: KeyboardEvent) {
-    if (e.key === "Escape") close()
+  if (e.key === "Escape") close()
 }
 
 onMounted(() => {
-    document.addEventListener("click", onGlobalClick)
-    window.addEventListener("resize", close)
-    document.addEventListener("scroll", close, true)
-    document.addEventListener("keydown", onKey)
+  document.addEventListener("click", onGlobalClick)
+  window.addEventListener("resize", close)
+  document.addEventListener("scroll", close, true)
+  document.addEventListener("keydown", onKey)
 })
 
 onBeforeUnmount(() => {
-    document.removeEventListener("click", onGlobalClick)
-    window.removeEventListener("resize", close)
-    document.removeEventListener("scroll", close, true)
-    document.removeEventListener("keydown", onKey)
+  document.removeEventListener("click", onGlobalClick)
+  window.removeEventListener("resize", close)
+  document.removeEventListener("scroll", close, true)
+  document.removeEventListener("keydown", onKey)
 })
 </script>
 
@@ -31,28 +32,37 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <div
         v-if="state.visible"
-        class="editor-context-menu"
+        ref="menuRef"
+        class="context-menu rounded bg-bg shadow overflow-hidden"
         :style="{
-        position: 'fixed',
-        left: state.x + 'px',
-        top: state.y + 'px'
-      }"
+    position: 'fixed',
+    left: state.x + 'px',
+    top: state.y + 'px'
+  }"
     >
       <template v-for="(item, i) in state.items" :key="i">
 
-        <hr v-if="item.type === 'separator'" />
+        <hr class="my-2" v-if="item.type === 'separator'" />
 
         <button
             v-else
-            class="menu-item"
+            class="px-3 py-1 hover:bg-primary hover:text-bg cursor-pointer w-full flex items-center gap-2 text-start"
             :class="{ danger: item.danger }"
             :disabled="item.disabled"
             @click.stop="
-            !item.disabled && item.action?.();
-            close();
-          "
+    !item.disabled && item.action?.();
+    close();
+  "
         >
-          {{ item.label }}
+          <Icon
+              v-if="item.icon"
+              :icon="item.icon"
+              class="w-4 h-4"
+          />
+
+          <span class="flex-1">
+            {{ item.label }}
+          </span>
         </button>
 
       </template>

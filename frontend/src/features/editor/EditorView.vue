@@ -7,6 +7,8 @@ import { editorStore } from "./editor.store"
 import { createEditorSocket } from "./editor.socket"
 import { useEditorSocket } from "./useEditorSocket"
 
+import Button from "../../components/basic/Button.vue";
+
 const params = new URLSearchParams(location.search)
 const scheduleId = Number(params.get("id") || 1)
 
@@ -28,10 +30,9 @@ function openColumnMenu(e: MouseEvent, col: any) {
   e.preventDefault()
 
   show(e.clientX, e.clientY, [
-    { label: "Create After", action: () => alert(col.order) },
-    { type: "separator" },
-    { label: "Delete Column", danger: true, action: () => alert(col.columnId) }
-  ])
+    { label: "Create After", icon: "ix:table-add-column-right", action: () => alert(col.order) },
+    { label: "Delete Column", icon: "lucide:delete", danger: true, action: () => alert(col.columnId) }
+  ], e.currentTarget as HTMLElement)
 }
 
 
@@ -88,10 +89,9 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
     <!-- NAV -->
     <nav class="flex items-center justify-between mb-6">
       <RouterLink
-          class="px-4 py-2 text-sm font-medium bg-muted border border-border rounded-lg shadow-sm hover:bg-primary hover:text-bg transition"
           :to="`/prompt?id=${scheduleId}`"
       >
-        Open Prompt
+        <Button class="cursor-pointer">Open Prompt</Button>
       </RouterLink>
     </nav>
 
@@ -168,16 +168,16 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
 
       <!-- CREATE ROW BUTTON -->
       <div class="p-4 border-t border-border">
-        <button
+        <Button
             class="px-4 py-2 text-sm font-medium bg-muted text-white rounded-lg hover:bg-primary hover:text-muted cursor-pointer transition shadow-sm"
             @click="socket.send({
-            type: 'com.example.websocket.ScheduleEvent.RowCreate',
-            scheduleId: editorStore.schedule?.id,
-            order: sortedRows.length
-          })"
+              type: 'com.example.websocket.ScheduleEvent.RowCreate',
+              scheduleId: editorStore.schedule?.id,
+              order: sortedRows.length
+            })"
         >
           Create Row
-        </button>
+        </Button>
       </div>
 
     </div>
