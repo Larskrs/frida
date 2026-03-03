@@ -95,11 +95,11 @@ fun loadColumnsFromRundown(rundownId: Int): List<Row> {
             obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
                 ?: 0L
 
-        val cells = LinkedHashMap<String, CellValue>()
+        val cells = LinkedHashMap<Int, CellValue>()
 
         for (key in filteredKeys) {
             val value = obj[key]?.jsonPrimitive?.contentOrNull ?: ""
-            cells[key] = CellValue.Text(value)
+            cells[0] = CellValue.Text(value)
         }
 
         Row(

@@ -37,3 +37,9 @@ out/
 
 ### VS Code ###
 .vscode/
+
+
+### VITE VUEJS ###
+
+/frontend/node_modules
+/frontend/dist

@@ -23,7 +23,7 @@ data class Row(
     val page: String,
     val title: String,
     val duration: Long,
-    val cells: Map<String, CellValue>,
+    val cells: Map<Int, CellValue>,
     var activatedAt: Long = 0,
     val script: String = ""
 )

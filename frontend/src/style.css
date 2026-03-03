@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  font-size: 18px;
+}
+
+
+@theme {
+  /* ---------- SURFACES ---------- */
+  --color-bg: oklch(0.96 0.01 250);          /* Main background */
+  --color-surface: oklch(0.985 0.002 250);   /* Cards / panels */
+  --color-surface-elevated: oklch(1 0 0);    /* Popovers */
+  --color-muted: oklch(0.92 0.01 250);       /* Subtle rows */
+
+  /* ---------- TEXT ---------- */
+  --color-text: oklch(0.28 0.02 250);
+  --color-text-muted: oklch(0.55 0.015 250);
+  --color-text-inverse: oklch(0.98 0.01 250);
+
+  /* ---------- BORDERS ---------- */
+  --color-border: oklch(0.85 0.01 250);
+  --color-border-subtle: oklch(0.90 0.005 250);
+  --color-border-focus: oklch(0.62 0.12 240);
+
+  /* ---------- PRIMARY (Action Blue) ---------- */
+  --color-primary: oklch(0.62 0.15 250);
+  --color-primary-hover: oklch(0.55 0.17 250);
+  --color-primary-muted: oklch(0.90 0.05 250);
+
+  /* ---------- STATUS ---------- */
+  --color-success: oklch(0.65 0.15 145);
+  --color-warning: oklch(0.75 0.15 80);
+  --color-danger: oklch(0.62 0.23 25);
+  --color-danger-hover: oklch(0.55 0.25 25);
+}
+
+
+/* ===================================================== */
+/* DARK MODE – Control Room Slate                       */
+/* ===================================================== */
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+
+    /* ---------- SURFACES ---------- */
+    --color-bg: oklch(0.16 0.01 260);            /* Deep slate */
+    --color-surface: oklch(0.20 0.015 260);      /* Panels */
+    --color-surface-elevated: oklch(0.24 0.02 260);
+    --color-muted: oklch(0.23 0.02 260);
+
+    /* ---------- TEXT ---------- */
+    --color-text: oklch(0.92 0.01 260);
+    --color-text-muted: oklch(0.70 0.02 260);
+    --color-text-inverse: oklch(0.15 0.01 260);
+
+    /* ---------- BORDERS ---------- */
+    --color-border: oklch(0.32 0.02 260);
+    --color-border-subtle: oklch(0.28 0.02 260);
+    --color-border-focus: oklch(0.69 0.057 232.594);
+
+    /* ---------- PRIMARY ---------- */
+    --color-primary: oklch(0.70 0.18 250);       /* Electric broadcast blue */
+    --color-primary-hover: oklch(0.78 0.20 250);
+    --color-primary-muted: oklch(0.28 0.06 250);
+
+    /* ---------- STATUS ---------- */
+    --color-success: oklch(0.72 0.18 145);
+    --color-warning: oklch(0.82 0.18 80);
+    --color-danger: oklch(0.65 0.25 25);
+    --color-danger-hover: oklch(0.75 0.28 25);
+  }
+}
+.inputfield {
+  padding: 0.25rem 1rem 0.25rem 1rem;
+  width: auto;
+  min-width: 2rem;
+  color: var(--color-text);
+}
+.inputfield:focus {
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: -1px;
+  color: var(--color-text-muted);
+}
+table {
+  width: auto;
+  overflow: auto;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  margin: 0 auto;
+}

@@ -1,8 +1,8 @@
 :root {
     --bg: #0b0b0c;
-    --panel: #131315;
+    --panel: #111111;
     --panel-2: #18181b;
-    --border: #2a2a2e;
+    --border: #4e4e54;
 
     --text: #e8e8ee;
     --muted: #8c8f99;
@@ -35,7 +35,7 @@ body {
 }
 html, body {
     min-width: 100%;
-    width: max-content; /* KEY */
+    width: max-content;
 }
 
 
@@ -47,11 +47,12 @@ html, body {
     flex-direction: column;
     min-height: 100vh;
     width: 100%;
+    background: var(--panel);
+    padding: 16px;
 }
 
 .panel {
     background: var(--panel);
-    border-bottom: 1px solid var(--border);
     padding: 16px 20px;
     display: flex;
     flex-direction: column;
@@ -141,7 +142,6 @@ button:hover {
 
 .table-wrapper {
     overflow: auto;
-    border-top: 1px solid var(--border);
 }
 
 /* Prevent layout jumps */
@@ -150,9 +150,19 @@ table {
     border-collapse: separate;
     border-spacing: 0;
     font-size: 1rem;
-    border: 1px solid var(--border);
     background: var(--panel);
+    border-bottom: 1px solid var(--border);
 }
+
+.type-select {
+    background: var(--muted);
+    border-radius: 4px;
+    padding: 2px 0 2px 4px;
+}
+.type-option {
+
+}
+
 
 /* Sticky header */
 thead th {
@@ -161,20 +171,26 @@ thead th {
     z-index: 2;
 }
 
+th, td {
+    width: 1%;
+    white-space: normal;
+}
+
 th {
     text-align: left;
-    padding: 10px 12px;
     font-weight: 500;
-    border-bottom: 1px solid var(--border);
-    background: #1c1c21;
+    background: var(--panel);
     color: var(--muted);
     white-space: nowrap;
     width: fit-content;
+    border-bottom: 1px solid var(--border);
 }
 th > span {
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 10px 12px;
+    white-space: normal;
 }
 
 td {
@@ -183,10 +199,11 @@ td {
     height: var(--cell-h);
     background: var(--panel);
 }
-
-/* Zebra */
-tr:nth-child(odd) td {
-    background: var(--panel-2);
+td:first-child {
+    border-left: 1px solid var(--border);
+}
+td:last-child {
+    border-right: 1px solid var(--border);
 }
 
 /* Hover */
@@ -208,6 +225,23 @@ td > input {
     padding: 0 12px;
     border: 1px solid transparent;
     color: #c7c7c7;
+}
+
+.column-header-editable > input {
+    width: fit-content;
+    border-radius: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    white-space: nowrap;
+    height: 100%;
+    padding: 10px 12px;
+}
+.column-header-editable > input:focus {
+    background: var(--panel-2);
+    outline: none;
+    border: 1px solid var(--muted);
+    color: white;
 }
 
 .active td:first-child {
@@ -312,3 +346,5 @@ tr:has(input:focus) td {
         font-size: 12px;
     }
 }
+
+

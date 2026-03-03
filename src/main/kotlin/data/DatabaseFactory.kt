@@ -81,7 +81,7 @@ object RowsTable : Table("rows") {
     val duration = long("duration")
     val script = text("script")
 
-    val cells = jsonb<Map<String, CellValue>>(
+    val cells = jsonb<Map<Int, CellValue>>(
         "cells",
         kotlinx.serialization.json.Json
     )

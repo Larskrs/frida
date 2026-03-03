@@ -37,14 +37,36 @@ sealed class ScheduleEvent {
     ): ScheduleEvent()
 
     @Serializable
+    data class ColumnDelete(
+        val scheduleId: Int,
+        val columnId: Int,
+    ): ScheduleEvent()
+
+    @Serializable
     data class RowEdited(
         val scheduleId: Int,
         val rowId: Int,
-        val key: String,
+        val key: String? = null,      // top-level field
+        val columnId: Int? = null,    // DB column
         val value: JsonElement? = null,
         val cell: CellValue? = null
     ) : ScheduleEvent()
 
+    @Serializable
+    data class ColumnEdited(
+        val scheduleId: Int,
+        val columnId: Int,
+        val columnType: String,
+        val name: String,
+    ): ScheduleEvent()
+
+    @Serializable
+    data class ColumnCreate(
+        val scheduleId: Int,
+        val name: String?,
+        val columnType: String?,
+        val order: Int,
+    ): ScheduleEvent()
 
     @Serializable
     data class ProgramStartChanged(val scheduleId: Int, val programStart: Long) : ScheduleEvent()

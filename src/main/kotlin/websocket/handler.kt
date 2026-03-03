@@ -1,5 +1,6 @@
 package com.example.websocket
 
+import com.example.data.ColumnsTable
 import data.CellValue
 import data.Row
 import com.example.data.RowsTable
@@ -10,6 +11,7 @@ import io.ktor.websocket.*
 import kotlinx.serialization.json.Json
 import com.example.data.ScheduleStore
 import com.example.nextFullSecond
+import data.Column
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -71,8 +73,9 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     val updatedRows = current.rows.map { row ->
                         if (row.id != event.rowId) return@map row
 
-                        // ----- TOP LEVEL FIELDS -----
-                        if (event.cell == null) {
+                        // 🔹 TOP LEVEL FIELDS
+                        if (event.columnId == null) {
+
                             when (event.key) {
                                 "title" -> row.copy(title = event.value.asString() ?: "")
                                 "page" -> row.copy(page = event.value.asString() ?: "")
@@ -80,31 +83,33 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                                 "duration" -> row.copy(duration = event.value.asLong() ?: row.duration)
                                 else -> row
                             }
-                        }
 
-                        // ----- CELL PATCH -----
+                        }
+                        // 🔹 COLUMN CELL PATCH
                         else {
+
                             val newCells = row.cells.toMutableMap()
-                            newCells[event.key] = event.cell
+                            newCells[event.columnId] = event.cell!!
                             row.copy(cells = newCells)
                         }
                     }
 
-                    val updatedSchedule = current.copy(rows = updatedRows, activeRowId = current.activeRowId)
+                    val updatedSchedule = current.copy(rows = updatedRows)
 
-                    // ---- STORE IN MEMORY ----
+                    // ---- STORE ----
                     ScheduleStore.set(event.scheduleId, updatedSchedule)
 
                     // ---- PERSIST ----
                     ScheduleRepository.save(updatedSchedule)
 
-                    // ---- BROADCAST PATCH + LOAD ----
+                    // ---- BROADCAST PATCH ----
                     broadcast(
                         event.scheduleId,
                         ScheduleEvent.RowEdited(
                             scheduleId = event.scheduleId,
                             rowId = event.rowId,
                             key = event.key,
+                            columnId = event.columnId,
                             value = event.value,
                             cell = event.cell
                         )
@@ -215,6 +220,35 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                     )
                 }
 
+                is ScheduleEvent.ColumnCreate -> {
+
+                    val current = ScheduleStore.get(event.scheduleId)
+                        ?: ScheduleRepository.get(event.scheduleId)
+                        ?: continue
+
+                    val updated = insertColumnAtOrder(
+                        schedule = current,
+                        targetOrder = event.order,
+                        name = event.name ?: "New Column",
+                        type = event.columnType ?: "Text"
+                    )
+
+                    // ---- STORE ----
+                    ScheduleStore.set(event.scheduleId, updated)
+
+                    // ---- PERSIST ----
+                    ScheduleRepository.save(updated)
+
+                    // ---- BROADCAST FULL LOAD ----
+                    broadcast(
+                        event.scheduleId,
+                        ScheduleEvent.Load(
+                            scheduleId = event.scheduleId,
+                            schedule = updated
+                        )
+                    )
+                }
+
                 is ScheduleEvent.RowDelete -> {
 
                     val current = ScheduleStore.get(event.scheduleId)
@@ -249,6 +283,98 @@ suspend fun handleSocket(session: DefaultWebSocketServerSession) {
                             scheduleId = event.scheduleId,
                             schedule = updated
                         )
+                    )
+                }
+
+                is ScheduleEvent.ColumnDelete -> {
+
+                    val current = ScheduleStore.get(event.scheduleId)
+                        ?: ScheduleRepository.get(event.scheduleId)
+                        ?: continue
+
+                    // 1️⃣ DELETE FROM DB
+                    transaction {
+                        ColumnsTable.deleteWhere { ColumnsTable.id eq event.columnId }
+                    }
+
+                    // 2️⃣ REMOVE COLUMN FROM MEMORY
+                    val filteredColumns = current.columns
+                        .filterNot { it.id == event.columnId }
+                        .sortedBy { it.order }
+
+                    // 3️⃣ NORMALIZE COLUMN ORDER
+                    val normalizedColumns = filteredColumns.mapIndexed { index, column ->
+                        column.copy(order = index)
+                    }
+
+                    // 4️⃣ REMOVE COLUMN CELLS FROM ALL ROWS
+                    val updatedRows = current.rows.map { row ->
+                        val newCells = row.cells
+                            .filterKeys { it != event.columnId }
+                            .toMutableMap()
+
+                        row.copy(cells = newCells)
+                    }
+
+                    val updatedSchedule = current.copy(
+                        columns = normalizedColumns,
+                        rows = updatedRows
+                    )
+
+                    // 5️⃣ STORE + PERSIST
+                    ScheduleStore.set(event.scheduleId, updatedSchedule)
+                    ScheduleRepository.save(updatedSchedule)
+
+                    // 6️⃣ BROADCAST FULL LOAD
+                    broadcast(
+                        event.scheduleId,
+                        ScheduleEvent.Load(
+                            scheduleId = event.scheduleId,
+                            schedule = updatedSchedule
+                        )
+                    )
+                }
+
+                is ScheduleEvent.ColumnEdited -> {
+
+                    println("Editing column ${event.columnId}")
+
+                    println(event)
+
+                    val current = ScheduleStore.get(event.scheduleId)
+                        ?: ScheduleRepository.get(event.scheduleId)
+                        ?: continue
+
+                    // 1️⃣ UPDATE DB
+                    transaction {
+                        ColumnsTable.update(
+                            where = { ColumnsTable.id eq event.columnId }
+                        ) {
+                            it[ColumnsTable.name] = event.name
+                            it[ColumnsTable.type] = event.columnType
+                        }
+                    }
+
+                    // 2️⃣ UPDATE MEMORY
+                    val updatedColumns = current.columns.map { col ->
+                        if (col.id == event.columnId) {
+                            col.copy(
+                                name = event.name,
+                                type = event.columnType
+                            )
+                        } else col
+                    }
+
+                    val updatedSchedule = current.copy(columns = updatedColumns)
+
+                    // 3️⃣ STORE + PERSIST
+                    ScheduleStore.set(event.scheduleId, updatedSchedule)
+                    ScheduleRepository.save(updatedSchedule)
+
+                    // 4️⃣ BROADCAST PATCH
+                    broadcast(
+                        event.scheduleId,
+                        event
                     )
                 }
 
@@ -307,7 +433,7 @@ fun insertRowAtOrder(schedule: Schedule, targetOrder: Int): Schedule {
         val newId = RowsTable.insert {
             it[scheduleId] = schedule.id
             it[order] = safeOrder
-            it[cells] = emptyMap<String, CellValue>()
+            it[cells] = emptyMap<Int, CellValue>()
             it[title] = "New Row"
             it[page] = "A$safeOrder"
             it[script] = ""
@@ -333,6 +459,55 @@ fun insertRowAtOrder(schedule: Schedule, targetOrder: Int): Schedule {
 
         // 4. Return updated schedule
         schedule.copy(rows = rows)
+    }
+}
+
+fun insertColumnAtOrder(
+    schedule: Schedule,
+    targetOrder: Int,
+    name: String,
+    type: String
+): Schedule {
+
+    return transaction {
+
+        val safeOrder = targetOrder.coerceAtLeast(0)
+
+        // 1️⃣ Shift existing columns
+        ColumnsTable.update(
+            where = {
+                (ColumnsTable.scheduleId eq schedule.id) and
+                        (ColumnsTable.order greaterEq safeOrder)
+            }
+        ) {
+            with(SqlExpressionBuilder) {
+                it.update(ColumnsTable.order, ColumnsTable.order + 1)
+            }
+        }
+
+        // 2️⃣ Insert new column
+        ColumnsTable.insert {
+            it[scheduleId] = schedule.id
+            it[order] = safeOrder
+            it[ColumnsTable.name] = name
+            it[ColumnsTable.type] = type
+        }
+
+        // 3️⃣ Re-read columns
+        val columns = ColumnsTable
+            .select { ColumnsTable.scheduleId eq schedule.id }
+            .orderBy(ColumnsTable.order to SortOrder.ASC)
+            .map {
+                Column(
+                    id = it[ColumnsTable.id],
+                    name = it[ColumnsTable.name],
+                    order = it[ColumnsTable.order],
+                    type = it[ColumnsTable.type]
+                )
+            }
+
+        // 4️⃣ Return updated schedule
+        schedule.copy(columns = columns)
     }
 }
 
