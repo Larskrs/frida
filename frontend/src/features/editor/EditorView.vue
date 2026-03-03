@@ -233,7 +233,7 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
       <!-- CREATE ROW BUTTON -->
       <div class="p-3 border-t border-border">
         <Button
-            class="px-4 py-2 text-sm font-medium bg-muted text-white rounded-lg hover:bg-primary hover:text-muted cursor-pointer transition shadow-sm"
+            class="px-3 py-1.5 text-sm font-medium bg-muted text-white rounded-lg hover:bg-primary hover:text-muted cursor-pointer transition shadow-sm"
             @click="socket.send({
               type: 'com.example.websocket.ScheduleEvent.RowCreate',
               scheduleId: scheduleId,
