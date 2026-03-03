@@ -35,6 +35,22 @@ function openColumnMenu(e: MouseEvent, col: any) {
   ], e.currentTarget as HTMLElement)
 }
 
+function openRowMenu(e: MouseEvent, row: any) {
+  e.preventDefault()
+
+  show(e.clientX, e.clientY, [
+    { label: "Delete Row", icon: "lucide:delete", danger: true, action: () => sendDeleteRow(row.id) }
+  ])
+}
+
+function sendDeleteRow(id) {
+  socket.send({
+    type: "com.example.websocket.ScheduleEvent.RowDelete",
+    scheduleId: editorStore.schedule?.id,
+    rowId: id,
+  })
+}
+
 
 function getCellValue(row: any, columnId: number) {
   return row.cells?.[columnId]?.value ?? ""
@@ -96,10 +112,10 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
     </nav>
 
     <!-- TABLE WRAPPER -->
-    <div class="bg-surface w-fit border border-border rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-surface w-fit rounded-xl border border-border shadow-xl shadow-border-subtle overflow-hidden">
 
       <div class="overflow-x-auto w-fit">
-        <table class="w-auto text-sm border-collapse">
+        <table class="text-sm border-collapse table-auto">
 
           <!-- HEADER -->
           <thead class="bg-muted">
@@ -108,13 +124,10 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
                 v-for="col in editorStore.columns"
                 :key="col.columnId ?? col.key"
                 @contextmenu="(e) => openColumnMenu(e, col)"
-                class="px-4 py-2 text-left font-semibold text-text-muted uppercase tracking-wide border-b border-border select-none"
+                class="px-4 py-2 text-left font-semibold text-text-muted uppercase tracking-wide select-none"
             >
               <template v-if="col.top">
                 <span>{{ col.key.toUpperCase() }}</span>
-                <span class="ml-2 text-xs text-text-muted normal-case">
-                    {{ col.type }}
-                  </span>
               </template>
 
               <template v-else>
@@ -129,8 +142,9 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
           <tr
               v-for="row in sortedRows"
               :key="row.id"
+              @contextmenu="(e) => openRowMenu(e, row)"
               :class="[
-                'transition-colors border-b border-border',
+                'transition-colors',
                 row.id === editorStore.activeRowId
                   ? 'bg-brand/10 border-l-4 border-brand'
                   : 'hover:bg-muted'
@@ -139,7 +153,7 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
             <td
                 v-for="col in editorStore.columns"
                 :key="col.columnId ?? col.key"
-                class="align-middle"
+                class="align-middle w-px whitespace-nowrap"
             >
 
               <template v-if="col.top">
@@ -172,7 +186,7 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
             class="px-4 py-2 text-sm font-medium bg-muted text-white rounded-lg hover:bg-primary hover:text-muted cursor-pointer transition shadow-sm"
             @click="socket.send({
               type: 'com.example.websocket.ScheduleEvent.RowCreate',
-              scheduleId: editorStore.schedule?.id,
+              scheduleId: scheduleId,
               order: sortedRows.length
             })"
         >

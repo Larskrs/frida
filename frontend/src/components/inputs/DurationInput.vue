@@ -61,7 +61,8 @@ function revert() {
       @keydown.esc.prevent="revert"
       @blur="formatNow"
       @focus="($event.target as HTMLInputElement).select()"
+      @focusout="commit"
       placeholder="HH:MM:SS"
-      class="inputfield time-input"
+      class="inputfield time-input max-w-25"
   />
 </template>

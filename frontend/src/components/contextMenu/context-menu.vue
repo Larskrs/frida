@@ -46,7 +46,7 @@ onBeforeUnmount(() => {
 
         <button
             v-else
-            class="px-3 py-1 hover:bg-primary hover:text-bg cursor-pointer w-full flex items-center gap-2 text-start"
+            class="px-3 py-1 hover:bg-primary hover:text-bg cursor-pointer w-full flex items-center gap-2 text-start text-text"
             :class="{ danger: item.danger }"
             :disabled="item.disabled"
             @click.stop="

@@ -25,7 +25,7 @@ const baseStyles = 'font-bold cursor-pointer py-2 px-4 rounded transition durati
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'primary':
-      return 'px-4 py-2 text-sm font-medium bg-muted border border-border rounded-lg shadow-sm hover:bg-primary hover:text-bg transition';
+      return 'px-4 py-2 text-sm font-medium bg-text text-bg border border-text rounded-lg shadow-md hover:bg-surface hover:text-text transition';
     case 'secondary':
       return 'bg-gray-500 hover:bg-gray-700 text-white';
     case 'danger':
