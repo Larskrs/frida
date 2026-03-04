@@ -160,7 +160,7 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
         <h1>{{ editorStore.schedule.name }}</h1>
       </nav>
 
-      <div class="bg-surface h-fit w-fit rounded-xl border border-border shadow-xl shadow-border-subtle overflow-hidden">
+      <div class="bg-bg border border-border h-fit w-fit rounded-xl overflow-hidden">
 
       <div class="overflow-x-auto w-fit">
         <table class="text-sm border-collapse table-auto">
