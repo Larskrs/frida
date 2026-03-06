@@ -31,7 +31,7 @@ function openColumnMenu(e: MouseEvent, col: any) {
   e.preventDefault()
 
   show(e.clientX, e.clientY, [
-    { label: "Create After", icon: "ix:table-add-column-right", action: () => sendCreateNewColumn(col.order+1) },
+    { label: "Create After", icon: "ix:table-add-column-right", action: () => sendCreateNewColumn((col.order) ?? null) },
     { label: "Delete Column", icon: "lucide:delete", danger: true, action: () => sendDeleteColumn(col.columnId) }
   ], e.currentTarget as HTMLElement)
 }
@@ -55,7 +55,7 @@ function sendCreateNewColumn(order: number) {
   socket.send({
     type: "com.example.websocket.ScheduleEvent.ColumnCreate",
     scheduleId: scheduleId,
-    order: order,
+    order: order +1   ,
     name: "New Column",
     columnType: "Text"
   });
