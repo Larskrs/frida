@@ -15,6 +15,7 @@ export function useEditorSocket(socket: WebSocketManager<EditorEvent>) {
                 editorStore.schedule = event.schedule
                 editorStore.rows = [...event.schedule.rows]
                 editorStore.columns = buildColumns(event.schedule)
+                editorStore.activeRowId = event.schedule.activeRowId
                 break
 
             case "RowEdited": {

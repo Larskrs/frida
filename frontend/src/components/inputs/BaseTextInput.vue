@@ -9,38 +9,36 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: string): void
 }>()
 
-const mirror = ref<HTMLSpanElement | null>(null)
-const input = ref<HTMLInputElement | null>(null)
+const editor = ref<HTMLSpanElement | null>(null)
 
-function resize() {
-  if (!mirror.value || !input.value) return
-  mirror.value.textContent = input.value.value || input.value.placeholder || ""
-  input.value.style.width = mirror.value.offsetWidth + 1 + "px"
+function onInput() {
+  if (!editor.value) return
+  emit("update:modelValue", editor.value.innerText)
 }
 
-function onInput(event: Event) {
-  const target = event.target as HTMLInputElement | null
-  if (!target) return
-  emit("update:modelValue", String(target.value))
-  resize()
-}
-
-watch(() => props.modelValue, () => nextTick(resize), { immediate: true })
+// Sync external modelValue changes into the DOM without moving the cursor
+watch(
+  () => props.modelValue,
+  (val) => {
+    nextTick(() => {
+      if (!editor.value) return
+      const incoming = val ?? ""
+      if (editor.value.innerText !== incoming) {
+        editor.value.innerText = incoming
+      }
+    })
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <span class="relative inline-flex">
-    <span
-        ref="mirror"
-        class="inputfield invisible min-w-25 absolute whitespace-pre pointer-events-none"
-        aria-hidden="true"
-    />
-    <input
-        ref="input"
-        class="inputfield min-w-8"
-        type="text"
-        :value="modelValue ?? ''"
-        @input="onInput"
-    />
-  </span>
+  <div
+    ref="editor"
+    class="inputfield min-w-8 h-full break-words whitespace-pre-wrap"
+    contenteditable="true"
+    role="textbox"
+    aria-multiline="true"
+    @input="onInput"
+  />
 </template>

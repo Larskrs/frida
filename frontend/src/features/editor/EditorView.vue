@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from "vue"
+import { computed, onMounted, onBeforeUnmount, ref } from "vue"
 
 import { useContextMenu} from "../../components/contextMenu/useContextMenu.ts";
 import { resolveInput } from "../../components/inputs"
 import { editorStore } from "./editor.store"
 import { createEditorSocket } from "./editor.socket"
 import { useEditorSocket } from "./useEditorSocket"
+import { Icon } from "@iconify/vue"
+
+const importId = ref("")
 
 import Button from "../../components/basic/Button.vue";
 import ScheduleList from "@/components/ScheduleList.vue";
+
+import FridaModal from "../../components/Modal.vue"
+import { useModal } from "../../components/composables/useModal"
+
+const modals = useModal()
 
 const params = new URLSearchParams(location.search)
 const scheduleId = Number(params.get("id") || 1)
@@ -40,10 +48,17 @@ function openRowMenu(e: MouseEvent, row: any) {
   e.preventDefault()
 
   show(e.clientX, e.clientY, [
-    { label: "Delete Row", icon: "lucide:delete", danger: true, action: () => sendDeleteRow(row.id) }
+    { label: "Activate Row", icon: "lucide:play", danger: false, action: () => sendSetActiveRow(row.id) },
+    { label: "Delete Row", icon: "lucide:delete", danger:  true, action: () => sendDeleteRow(row.id) }
   ])
 }
-
+function sendSetActiveRow(id: number) {
+  socket.send({
+    type: "com.example.websocket.ScheduleEvent.ActiveRowChanged",
+    scheduleId: editorStore.schedule?.id,
+    rowId: id,
+  })
+}
 function sendDeleteRow(id: number) {
   socket.send({
     type: "com.example.websocket.ScheduleEvent.RowDelete",
@@ -122,21 +137,63 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
     cell
   })
 }
+
+async function runImport() {
+  const numId = Number(importId.value)
+
+  if (!numId || isNaN(numId))
+    return { ok: false, error: "Please enter a valid numeric ID." }
+
+  const res = await fetch(`/api/schedule/import/rc/${numId}`, { method: "POST" })
+  console.log(await res.json())
+  return res.ok ? true : { ok: false, error: `Import failed (${res.status})` }
+}
+
 </script>
 
 <template>
-  <div class="min-h-screen grid grid-cols-[16rem_1fr] bg-bg text-text p-">
+
+  <FridaModal
+      id="import-rc"
+      title="Import RC Schedule"
+      size="sm"
+      cancel-label="Cancel"
+      action-label="Import"
+      action-loading-label="Importing…"
+      :action="runImport"
+  >
+    <template #default>
+      <label class="block text-sm font-medium text-stone-700 mb-1">RC Schedule ID</label>
+      <input
+          v-model="importId"
+          type="number"
+          placeholder="e.g. 42"
+          class="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm bg-stone-50 focus:outline-none focus:border-amber-700 focus:bg-white transition-colors"
+      />
+    </template>
+  </FridaModal>
+
+
+
+
+  <div class="fixed inset-0 min-h-screen grid grid-cols-[16rem_1fr] bg-bg text-text p-">
 
     <!-- NAV -->
-    <nav class="flex flex-col items-start justify-start">
-      <div class="flex flex-col items-start justify-start gap-2">
+    <nav class="w-full h-screen flex flex-col items-center justify-start">
+      <div class="w-full flex flex-col items-start px-3 mt-4 justify-start gap-0.5">
         <RouterLink
-            class="w-full text-sm px-3 py-1 rounded-md hover:bg-muted w-full"
+            class="w-full text-sm px-3 py-1 rounded-md hover:bg-muted w-full flex flex-row gap-2 items-center justify-start"
             :to="`/prompt?id=${scheduleId}`"
         >
-          Prompt
+        <Icon class="w-4 h-4" icon="lucide:monitor-play" />
+          Prompter
         </RouterLink>
+
+        <button @click="modals.open('import-rc')" class="cursor-pointer flex flex-row gap-2 items-center justify-start w-full text-sm px-3 py-1 rounded-md hover:bg-muted w-full">
+          <Icon class="w-4 h-4" icon="lucide:import" /> Import Rundown
+        </button>
       </div>
+
 
       <ScheduleList></ScheduleList>
 
@@ -149,15 +206,15 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
       </div>
     </nav>
 
-    <main v-if="!editorStore.schedule" class="p-4 border-l border-border flex items-center justify-center text-text-muted">
+    <main v-if="!editorStore.schedule" class="col-start-2 p-4 border-l border-border flex items-center justify-center text-text-muted">
       <div class="spinner" />
       <span>Loading schedule…</span>
     </main>
 
-    <main v-else class="p-4 border-l border-border">
+    <main v-else class="h-screen overflow-y-auto col-start-2 p-4 border-l border-border">
       <!-- TABLE WRAPPER -->
       <nav class="mb-4">
-        <h1>{{ editorStore.schedule.name }}</h1>
+        <h1 class="text-xl font-bold text-primary">{{ editorStore.schedule.name }}</h1>
       </nav>
 
       <div class="bg-bg border border-border h-fit w-fit rounded-xl overflow-hidden">
@@ -196,14 +253,15 @@ function sendCellEdit(rowId: number, columnId: number, cell: any) {
               :class="[
                 'transition-colors',
                 row.id === editorStore.activeRowId
-                  ? 'bg-brand/10 border-l-4 border-brand'
+                  ? 'bg-active/25 border-l-4 border-active/75'
                   : 'hover:bg-muted'
               ]"
           >
             <td
                 v-for="col in editorStore.columns"
                 :key="col.columnId ?? col.key"
-                class="align-middle w-px whitespace-nowrap"
+                class="h-px align-middle w-px whitespace-nowrap"
+                @click="(e) => (e.currentTarget as HTMLElement).querySelector('input, textarea, select, [contenteditable]')?.focus()"
             >
 
               <template v-if="col.top">

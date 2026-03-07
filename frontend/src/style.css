@@ -31,6 +31,7 @@
   --color-warning: oklch(0.75 0.15 80);
   --color-danger: oklch(0.62 0.23 25);
   --color-danger-hover: oklch(0.55 0.25 25);
+  --color-active: oklch(0.5 0.5 105);
 }
 
 @theme {
@@ -60,6 +61,7 @@
   --color-warning: oklch(0.75 0.15 80);
   --color-danger: oklch(0.62 0.23 25);
   --color-danger-hover: oklch(0.55 0.25 25);
+  --color-active: oklch(0.5 0.5 100);
 }
 
 
@@ -95,6 +97,7 @@
     --color-warning: oklch(0.82 0.18 80);
     --color-danger: oklch(0.65 0.25 25);
     --color-danger-hover: oklch(0.75 0.28 25);
+    --color-active: oklch(0.5 0.5 200);
   }
 }
 
@@ -140,6 +143,9 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+body, html {
+  background: var(--color-bg);
 }
 
 #app {
