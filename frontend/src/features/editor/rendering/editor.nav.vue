@@ -111,16 +111,6 @@ function resolveLink(to: NavLink["to"]): string {
     <ScheduleList v-if="!editorUI.sidebarCollapsed" />
 
     <div class="flex flex-row gap-2 p-4 mt-auto">
-      <RouterLink :to="`/prompt?id=${scheduleId}`">
-        <Button v-if="!editorUI.sidebarCollapsed" class="cursor-pointer">Open Prompt</Button>
-        <button
-            v-else
-            class="cursor-pointer p-1.5 rounded-md hover:bg-muted text-text-muted"
-            title="Open Prompt"
-        >
-          <Icon class="w-5 h-5" icon="lucide:monitor-play" />
-        </button>
-      </RouterLink>
     </div>
   </nav>
 </template>
