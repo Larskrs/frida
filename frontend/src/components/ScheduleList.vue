@@ -20,13 +20,14 @@
     <template v-else>
       <ul class="flex flex-col w-full items-start gap-1 p-4">
         <span class="text-xs text-text/75">Kjøreplaner</span>
-        <a
-           v-for="schedule in schedules"
-           :key="schedule.id"
-           :href="`/editor?id=${schedule.id}`"
-           :class="{ 'bg-muted': schedule.id === scheduleId }"
-           class="text-sm px-3 py-1 rounded-md hover:bg-muted w-full">{{ schedule.name }}
-        </a>
+          <RouterLink
+             v-for="schedule in schedules"
+             :key="schedule.id"
+             :to="`/editor?id=${schedule.id}`"
+             :class="{ 'bg-muted': schedule.id === scheduleId }"
+             class="text-sm px-3 py-1 rounded-md hover:bg-muted w-full line-clamp-1">
+            {{ schedule.name }}
+          </RouterLink>
       </ul>
     </template>
 
@@ -34,10 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 
-const params = new URLSearchParams(location.search)
-const scheduleId = Number(params.get("id") || 1)
+const route = useRoute()
+const scheduleId = computed(() => Number(route.query.id || 1))
 
 interface Row {
   id: number

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import PromptView from "../features/prompt/PromptView.vue"
-import EditorView from "../features/editor/EditorView.vue";
+import EditorView from "../features/editor/rendering/editor.render.vue";
 
 export const router = createRouter({
     history: createWebHistory(),
