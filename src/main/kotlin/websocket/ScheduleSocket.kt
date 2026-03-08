@@ -1,86 +1,91 @@
 package com.example.websocket
 
-import kotlinx.serialization.Serializable
 import data.CellValue
 import data.Schedule
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 sealed class ScheduleEvent {
 
+    @SerialName("com.example.websocket.ScheduleEvent.Load")
     @Serializable
     data class Load(
         val scheduleId: Int,
         val schedule: Schedule? = null,
-        val error: String? = null
+        val error: String? = null,
     ) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.RequestLoad")
     @Serializable
     data class RequestLoad(val scheduleId: Int) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.ChangeSchedule")
     @Serializable
     data class ChangeSchedule(val rundownId: Int) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.ReloadSchedule")
     @Serializable
     data class ReloadSchedule(val scheduleId: Int) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.RowCreate")
     @Serializable
     data class RowCreate(
-        val scheduleId: Int,
         val order: Int,
-    ): ScheduleEvent()
-
-    @Serializable
-    data class RowDelete(
-        val scheduleId: Int,
-        val rowId: Int,
-    ): ScheduleEvent()
-
-    @Serializable
-    data class ColumnDelete(
-        val scheduleId: Int,
-        val columnId: Int,
-    ): ScheduleEvent()
-
-    @Serializable
-    data class RowEdited(
-        val scheduleId: Int,
-        val rowId: Int,
-        val key: String? = null,      // top-level field
-        val columnId: Int? = null,    // DB column
-        val value: JsonElement? = null,
-        val cell: CellValue? = null
     ) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.RowDelete")
     @Serializable
-    data class ColumnEdited(
-        val scheduleId: Int,
-        val columnId: Int,
-        val columnType: String,
-        val name: String,
-    ): ScheduleEvent()
+    data class RowDelete(
+        val rowId: Int,
+    ) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.RowEdited")
+    @Serializable
+    data class RowEdited(
+        val rowId: Int,
+        val columnId: Int,
+        val cell: CellValue,
+    ) : ScheduleEvent()
+
+    @SerialName("com.example.websocket.ScheduleEvent.ColumnCreate")
     @Serializable
     data class ColumnCreate(
-        val scheduleId: Int,
         val name: String?,
         val columnType: String?,
         val order: Int,
-    ): ScheduleEvent()
-
-    @Serializable
-    data class ProgramStartChanged(val scheduleId: Int, val programStart: Long) : ScheduleEvent()
-
-    @Serializable
-    data class ActiveRowChanged(
-        val scheduleId: Int,
-        val rowId: Int,
-        var activatedAt: Long =0,
     ) : ScheduleEvent()
 
+    @SerialName("com.example.websocket.ScheduleEvent.ColumnEdited")
+    @Serializable
+    data class ColumnEdited(
+        val columnId: Int,
+        val columnType: String,
+        val name: String,
+    ) : ScheduleEvent()
+
+    @SerialName("com.example.websocket.ScheduleEvent.ColumnDelete")
+    @Serializable
+    data class ColumnDelete(
+        val columnId: Int,
+    ) : ScheduleEvent()
+
+    @SerialName("com.example.websocket.ScheduleEvent.ProgramStartChanged")
+    @Serializable
+    data class ProgramStartChanged(
+        val programStart: Long,
+    ) : ScheduleEvent()
+
+    @SerialName("com.example.websocket.ScheduleEvent.ActiveRowChanged")
+    @Serializable
+    data class ActiveRowChanged(
+        val rowId: Int,
+        var activatedAt: Long = 0,
+    ) : ScheduleEvent()
+
+    @SerialName("com.example.websocket.ScheduleEvent.StartProgramAtRow")
     @Serializable
     data class StartProgramAtRow(
-        val scheduleId: Int,
         val rowId: Int,
     ) : ScheduleEvent()
 }

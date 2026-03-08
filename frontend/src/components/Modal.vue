@@ -1,54 +1,50 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition-opacity duration-200 ease-out"
-      leave-active-class="transition-opacity duration-150 ease-in"
-      enter-from-class="opacity-0"
-      leave-to-class="opacity-0"
+        enter-active-class="transition-opacity duration-200 ease-out"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
     >
       <div
-        v-if="isOpen"
-        class="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60"
-        :class="{ 'backdrop-blur-sm': backdrop === 'blur' }"
-        @click.self="closeOnBackdrop && close()"
-        role="dialog"
-        :aria-modal="true"
-        :aria-labelledby="titleId"
+          v-if="isOpen"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60"
+          :class="{ 'backdrop-blur-sm': backdrop === 'blur' }"
+          @click.self="closeOnBackdrop && close()"
+          role="dialog"
+          :aria-modal="true"
+          :aria-labelledby="titleId"
       >
-        <!-- Modal card -->
         <Transition
-          enter-active-class="transition-all duration-[250ms] ease-[cubic-bezier(.22,.68,0,1.2)]"
-          leave-active-class="transition-all duration-200 ease-in"
-          enter-from-class="opacity-0 translate-y-4 scale-[.97]"
-          leave-to-class="opacity-0 translate-y-2 scale-[.98]"
+            enter-active-class="transition-all duration-[250ms] ease-[cubic-bezier(.22,.68,0,1.2)]"
+            leave-active-class="transition-all duration-200 ease-in"
+            enter-from-class="opacity-0 translate-y-4 scale-[.97]"
+            leave-to-class="opacity-0 translate-y-2 scale-[.98]"
         >
           <div
-            v-if="isOpen"
-            ref="modalRef"
-            class="relative flex flex-col w-full bg-white border border-stone-200 rounded-2xl shadow-2xl max-h-[calc(100vh-3rem)] overflow-hidden"
-            :class="sizeClass"
+              v-if="isOpen"
+              ref="modalRef"
+              class="relative flex flex-col w-full bg-surface border border-border rounded-2xl shadow-2xl max-h-[calc(100vh-3rem)] overflow-hidden"
+              :class="sizeClass"
           >
-            <!-- Top accent stripe -->
-            <div class="h-[3px] flex-shrink-0" :class="accentClass" />
-
             <!-- Header -->
             <div
-              v-if="$slots.header || title"
-              class="flex items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-stone-200 flex-shrink-0"
+                v-if="$slots.header || title"
+                class="flex items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-border flex-shrink-0"
             >
               <slot name="header">
                 <h2
-                  :id="titleId"
-                  class="m-0 font-serif text-xl font-semibold tracking-tight text-stone-900 leading-snug"
+                    :id="titleId"
+                    class="m-0 text-xl font-semibold tracking-tight text-text leading-snug"
                 >
                   {{ title }}
                 </h2>
               </slot>
               <button
-                v-if="showClose"
-                class="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-800 transition-colors"
-                @click="close"
-                aria-label="Lukk"
+                  v-if="showClose"
+                  class="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg text-text-muted hover:bg-muted hover:text-text transition-colors"
+                  @click="close"
+                  aria-label="Lukk"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <path d="M1 1L17 17M17 1L1 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -57,34 +53,34 @@
             </div>
 
             <!-- Body -->
-            <div class="px-6 py-5 overflow-y-auto flex-1 text-[0.95rem] leading-relaxed text-stone-500">
+            <div class="px-6 py-5 overflow-y-auto flex-1 text-[0.95rem] leading-relaxed text-text bg-bg">
               <slot :data="modalData" />
             </div>
 
             <!-- Custom footer slot -->
             <div
-              v-if="$slots.footer"
-              class="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-200 bg-stone-50 flex-shrink-0 flex-wrap"
+                v-if="$slots.footer"
+                class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex-wrap"
             >
               <slot name="footer" :close="close" />
             </div>
 
             <!-- Default footer -->
             <div
-              v-else-if="confirmLabel || cancelLabel || action"
-              class="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-200 bg-stone-50 flex-shrink-0 flex-wrap"
+                v-else-if="confirmLabel || cancelLabel || action"
+                class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex-wrap"
             >
               <!-- Error message -->
               <Transition
-                enter-active-class="transition-all duration-200"
-                leave-active-class="transition-opacity duration-150"
-                enter-from-class="opacity-0 -translate-y-1"
-                leave-to-class="opacity-0"
+                  enter-active-class="transition-all duration-200"
+                  leave-active-class="transition-opacity duration-150"
+                  enter-from-class="opacity-0 -translate-y-1"
+                  leave-to-class="opacity-0"
               >
                 <span
-                  v-if="actionError"
-                  class="flex items-center gap-1.5 w-full text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-1"
-                  role="alert"
+                    v-if="actionError"
+                    class="flex items-center gap-1.5 w-full text-xs font-medium text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2 mb-1"
+                    role="alert"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" class="flex-shrink-0">
                     <circle cx="7" cy="7" r="6.25" stroke="currentColor" stroke-width="1.5"/>
@@ -96,36 +92,36 @@
 
               <!-- Cancel -->
               <button
-                v-if="cancelLabel"
-                class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-stone-500 bg-transparent hover:bg-stone-100 hover:text-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.97]"
-                :disabled="actionLoading"
-                @click="cancel"
+                  v-if="cancelLabel"
+                  class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-border text-text-muted bg-transparent hover:bg-muted hover:text-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.97]"
+                  :disabled="actionLoading"
+                  @click="cancel"
               >
                 {{ cancelLabel }}
               </button>
 
               <!-- Confirm (no action fn) -->
               <button
-                v-if="confirmLabel && !action"
-                class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors active:scale-[.97]"
-                :class="confirmBtnClass"
-                @click="confirm"
+                  v-if="confirmLabel && !action"
+                  class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-text-inverse transition-colors active:scale-[.97]"
+                  :class="confirmBtnClass"
+                  @click="confirm"
               >
                 {{ confirmLabel }}
               </button>
 
               <!-- Action button -->
               <button
-                v-if="action"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors active:scale-[.97] disabled:opacity-60 disabled:cursor-not-allowed"
-                :class="[confirmBtnClass, { 'opacity-80 cursor-not-allowed': actionLoading }]"
-                :disabled="actionLoading"
-                @click="runAction"
+                  v-if="action"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-inverse transition-colors active:scale-[.97] disabled:opacity-60 disabled:cursor-not-allowed"
+                  :class="[confirmBtnClass, { 'opacity-80 cursor-not-allowed': actionLoading }]"
+                  :disabled="actionLoading"
+                  @click="runAction"
               >
                 <svg
-                  v-if="actionLoading"
-                  class="animate-spin flex-shrink-0"
-                  width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
+                    v-if="actionLoading"
+                    class="animate-spin flex-shrink-0"
+                    width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
                 >
                   <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="2" stroke-dasharray="26" stroke-dashoffset="10" stroke-linecap="round"/>
                 </svg>
@@ -144,70 +140,25 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useModal } from './composables/useModal'
 
-// ── Props ────────────────────────────────────────────────────────────────────
 const props = defineProps({
-  /** v-model – controls open/closed state */
-  modelValue: { type: Boolean, default: false },
-  /**
-   * Optional modal ID — registers this modal with useModal() so it can be
-   * opened/closed/populated from anywhere via modals.open(id) etc.
-   */
-  id: { type: String, default: '' },
-  /** Title shown in the header */
-  title: { type: String, default: '' },
-  /**
-   * Size variant
-   * @values xs | sm | md | lg | xl | full
-   */
-  size: {
-    type: String,
-    default: 'md',
-    validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', 'full'].includes(v as string),  },
-  /**
-   * Visual variant – affects the top accent stripe and confirm button colour
-   * @values default | danger | success | info
-   */
-  variant: {
-    type: String,
-    default: 'default',
-        validator: (v) => ['default', 'danger', 'success', 'info'].includes(v as string),
-  },
-  /**
-   * Backdrop style
-   * @values dim | blur | none
-   */
-  backdrop: {
-    type: String,
-    default: 'dim',
-    validator: (v) => ['dim', 'blur', 'none'].includes(v as string),
-  },
-  /** Close when clicking outside the modal */
-  closeOnBackdrop: { type: Boolean, default: true },
-  /** Close when pressing Escape */
-  closeOnEsc: { type: Boolean, default: true },
-  /** Show the × close button in the header */
-  showClose: { type: Boolean, default: true },
-  /** Label for the confirm button (renders default footer) */
-  confirmLabel: { type: String, default: '' },
-  /** Label for the cancel button (renders default footer) */
-  cancelLabel: { type: String, default: '' },
-  /**
-   * Async action called when the action button is clicked.
-   * Return true / { ok: true }            → close modal
-   * Return false / { ok: false, error? }  → stay open, show error
-   * @type {(() => Promise<boolean | { ok: boolean; error?: string }>) | null}
-   */
-  action: { type: Function, default: null },
-  /** Label for the action button. Falls back to confirmLabel. */
-  actionLabel: { type: String, default: '' },
-  /** Label shown while the action is pending (e.g. "Lagrer…") */
+  modelValue:       { type: Boolean, default: false },
+  id:               { type: String,  default: '' },
+  title:            { type: String,  default: '' },
+  size:             { type: String,  default: 'md', validator: (v) => ['xs', 'sm', 'md', 'lg', 'xl', 'full'].includes(v as string) },
+  variant:          { type: String,  default: 'default', validator: (v) => ['default', 'danger', 'success', 'info'].includes(v as string) },
+  backdrop:         { type: String,  default: 'dim', validator: (v) => ['dim', 'blur', 'none'].includes(v as string) },
+  closeOnBackdrop:  { type: Boolean, default: true },
+  closeOnEsc:       { type: Boolean, default: true },
+  showClose:        { type: Boolean, default: true },
+  confirmLabel:     { type: String,  default: '' },
+  cancelLabel:      { type: String,  default: '' },
+  action:           { type: Function, default: null },
+  actionLabel:      { type: String,  default: '' },
   actionLoadingLabel: { type: String, default: '' },
 })
 
-// ── Emits ────────────────────────────────────────────────────────────────────
 const emit = defineEmits(['update:modelValue', 'close', 'confirm', 'cancel'])
 
-// ── Computed classes ─────────────────────────────────────────────────────────
 const sizeClass = computed(() => ({
   xs:   'max-w-xs',
   sm:   'max-w-sm',
@@ -217,69 +168,35 @@ const sizeClass = computed(() => ({
   full: 'max-w-full !max-h-screen !rounded-none',
 }[props.size]))
 
-const accentClass = computed(() => ({
-  default: 'bg-amber-700',
-  danger:  'bg-red-600',
-  success: 'bg-emerald-500',
-  info:    'bg-blue-500',
-}[props.variant]))
-
 const confirmBtnClass = computed(() => ({
-  default: 'bg-amber-700 hover:bg-amber-800',
-  danger:  'bg-red-600 hover:bg-red-700',
-  success: 'bg-emerald-500 hover:bg-emerald-600',
-  info:    'bg-blue-500 hover:bg-blue-600',
+  default: 'bg-primary hover:bg-primary-hover',
+  danger:  'bg-danger hover:bg-danger-hover',
+  success: 'bg-success hover:bg-success',
+  info:    'bg-primary hover:bg-primary-hover',
 }[props.variant]))
 
-// ── State ────────────────────────────────────────────────────────────────────
 const titleId       = computed(() => `frida-modal-title-${Math.random().toString(36).slice(2, 8)}`)
 const actionLoading = ref(false)
 const actionError   = ref('')
 
-// ── Modal registry integration ───────────────────────────────────────────────
-const modals = useModal()
+const modals    = useModal()
+const isOpen    = computed(() => props.id ? modals.isOpen(props.id) : props.modelValue)
+const modalData = computed(() => props.id ? modals.getData(props.id) : {})
 
-// Single source of truth: registry wins when id is set, otherwise fall back to v-model
-const isOpen = computed(() =>
-  props.id ? modals.isOpen(props.id) : props.modelValue
-)
+watch(isOpen, (val) => { if (props.modelValue !== val) emit('update:modelValue', val) })
+watch(() => props.modelValue, (val) => { if (props.id) modals._setState(props.id, val) })
 
-// Expose data passed via modals.openWithData() to the slot
-const modalData = computed(() =>
-  props.id ? modals.getData(props.id) : {}
-)
-
-// Keep v-model in sync when registry changes (id-driven usage)
-watch(isOpen, (val) => {
-  if (props.modelValue !== val) emit('update:modelValue', val)
-})
-
-// Keep registry in sync when v-model changes (v-model-driven usage)
-watch(() => props.modelValue, (val) => {
-  if (props.id) modals._setState(props.id, val)
-})
-
-// ── Methods ──────────────────────────────────────────────────────────────────
-function close () {
+function close() {
   actionError.value   = ''
   actionLoading.value = false
   if (props.id) modals._setState(props.id, false)
   emit('update:modelValue', false)
   emit('close')
 }
-function confirm () {
-  emit('confirm')
-  close()
-}
-function cancel () {
-  emit('cancel')
-  close()
-}
+function confirm() { emit('confirm'); close() }
+function cancel()  { emit('cancel');  close() }
 
-/**
- * Runs the `action` prop, then closes on success or shows an error on failure.
- */
-async function runAction () {
+async function runAction() {
   if (!props.action) return
   actionLoading.value = true
   actionError.value   = ''
@@ -287,11 +204,7 @@ async function runAction () {
     const result = await props.action(modalData.value)
     const ok  = typeof result === 'object' ? result?.ok    : result === true
     const msg = typeof result === 'object' ? result?.error : ''
-    if (ok) {
-      close()
-    } else {
-      actionError.value = msg || 'Noe gikk galt. Prøv igjen.'
-    }
+    if (ok) { close() } else { actionError.value = msg || 'Noe gikk galt. Prøv igjen.' }
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : 'En uventet feil oppstod.'
   } finally {
@@ -299,18 +212,12 @@ async function runAction () {
   }
 }
 
-// ── Keyboard / scroll-lock ───────────────────────────────────────────────────
 function onKeydown(e: KeyboardEvent) {
   if (props.closeOnEsc && e.key === 'Escape' && isOpen.value) close()
 }
 
-watch(isOpen, (open) => {
-  document.body.style.overflow = open ? 'hidden' : ''
-})
+watch(isOpen, (open) => { document.body.style.overflow = open ? 'hidden' : '' })
 
 onMounted  (() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
-  document.body.style.overflow = ''
-})
+onUnmounted(() => { window.removeEventListener('keydown', onKeydown); document.body.style.overflow = '' })
 </script>

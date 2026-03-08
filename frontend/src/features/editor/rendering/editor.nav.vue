@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue"
-import Button from "../../../components/basic/Button.vue"
 import ScheduleList from "@/components/ScheduleList.vue"
 import { editorUI } from "../editor.store"
 

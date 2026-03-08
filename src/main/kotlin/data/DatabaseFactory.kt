@@ -31,7 +31,7 @@ object DatabaseFactory {
         println("Postgres Settings loaded from config")
         println("    - URL: ${config.databaseURL}")
         println("    - User: ${config.databaseUser}")
-        println("    - Password: ********") // never print real password
+        println("    - Password: ********")
 
         return HikariConfig().apply {
             jdbcUrl = config.databaseURL
@@ -66,22 +66,17 @@ object DatabaseFactory {
 }
 
 object SchedulesTable : IntIdTable("schedules") {
-    val name = varchar("name", 255)
-    val slug = varchar("slug", 255)
+    val name        = varchar("name", 255)
+    val slug        = varchar("slug", 255)
     val programStart = long("program_start")
-    val isArchived = bool("is_archived").default(false)
+    val isArchived  = bool("is_archived").default(false)
 }
 
 object RowsTable : Table("rows") {
-    val id = integer("id").autoIncrement()
-    val order = integer("order")
+    val id         = integer("id").autoIncrement()
+    val order      = integer("order")
     val scheduleId = reference("schedule_id", SchedulesTable)
-    val page = varchar("page", 50)
-    val title = varchar("title", 255)
-    val duration = long("duration")
-    val script = text("script")
-
-    val cells = jsonb<Map<Int, CellValue>>(
+    val cells      = jsonb<Map<Int, CellValue>>(
         "cells",
         kotlinx.serialization.json.Json
     )
@@ -90,10 +85,11 @@ object RowsTable : Table("rows") {
 }
 
 object ColumnsTable : Table("columns") {
-    val id = integer("id").autoIncrement()
-    val name = varchar("name", 255)
-    val order = integer("order")
-    val type = varchar("type", 255)
+    val id         = integer("id").autoIncrement()
+    val name       = varchar("name", 255)
+    val order      = integer("order")
+    val type       = varchar("type", 255)
+    val system     = bool("system").default(false)
     val scheduleId = reference("schedule_id", SchedulesTable)
 
     override val primaryKey = PrimaryKey(id, scheduleId)

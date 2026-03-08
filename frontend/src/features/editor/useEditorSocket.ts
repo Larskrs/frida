@@ -22,18 +22,10 @@ export function useEditorSocket(socket: WebSocketManager<EditorEvent>) {
                 const row = editorStore.rows.find(r => r.id === event.rowId)
                 if (!row) return
 
-                if (!event.cell) {
-                    row[event.key!] = event.value
-                } else {
-                    row.cells ??= {}
-                    row.cells[event.columnId!] = event.cell
-                }
+                row.cells ??= {}
+                row.cells[event.columnId!] = event.cell
                 break
             }
-
-            case "RowCreate":
-                editorStore.rows.push(event.row)
-                break
 
             case "RowDelete":
                 editorStore.rows = editorStore.rows.filter(r => r.id !== event.rowId)
@@ -50,7 +42,7 @@ export function useEditorSocket(socket: WebSocketManager<EditorEvent>) {
                 editorStore.columns[index] = {
                     ...editorStore.columns[index],
                     name: event.name,
-                    type: event.type
+                    type: event.columnType,
                 }
                 break
             }

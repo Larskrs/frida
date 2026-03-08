@@ -1,7 +1,6 @@
 package com.example
 
 import com.example.routes.restRoutes
-import com.example.websocket.ScheduleTicker
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer

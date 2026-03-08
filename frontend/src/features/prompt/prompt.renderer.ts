@@ -1,8 +1,15 @@
+import type { ColumnMap } from "./prompt.types"
+
 export function createPromptRenderer(trackRef: any, scrollController: any) {
 
     const rows = new Map<number, any>()
     let sortedCache: any[] = []
     let currentIndex = 0
+    let columnMap: ColumnMap = { pageColId: null, titleColId: null, scriptColId: null }
+
+    function setColumnMap(map: ColumnMap) {
+        columnMap = map
+    }
 
     function escapeHtml(str: string) {
         return String(str)
@@ -13,14 +20,22 @@ export function createPromptRenderer(trackRef: any, scrollController: any) {
             .replace(/'/g, "&#039;")
     }
 
+    function getCellValue(row: any, colId: number | null): string {
+        if (colId === null) return ""
+        const cell = row.cells?.[colId] ?? row.cells?.[String(colId)]
+        return cell?.value ?? ""
+    }
+
     function buildRowHtml(row: any) {
-        const page = escapeHtml((row.page || "") + " - " + (row.title || ""))
-        const script =
-            escapeHtml(row.script ?? row.cells?.script?.value ?? "")
+        const page  = getCellValue(row, columnMap.pageColId)
+        const title = getCellValue(row, columnMap.titleColId)
+        const script = getCellValue(row, columnMap.scriptColId)
+
+        const header = escapeHtml([page, title].filter(Boolean).join(" - "))
 
         return `
-            <span class="page">${page}</span>
-            <span class="script">${script}</span>
+            <span class="page">${header}</span>
+            <span class="script">${escapeHtml(script)}</span>
         `
     }
 
@@ -85,22 +100,18 @@ export function createPromptRenderer(trackRef: any, scrollController: any) {
 
         const viewportHeight = window.innerHeight
         const undershoot = viewportHeight * 0.15
-
         const rowTop = el.offsetTop
-
         const targetY = -(rowTop - undershoot)
 
-        scrollController.jumpTo(targetY) // <- use your scroll instance
+        scrollController.jumpTo(targetY)
     }
 
     function jumpRelative(delta: number) {
         if (!sortedCache.length) return
 
         currentIndex += delta
-
         if (currentIndex < 0) currentIndex = 0
-        if (currentIndex >= sortedCache.length)
-            currentIndex = sortedCache.length - 1
+        if (currentIndex >= sortedCache.length) currentIndex = sortedCache.length - 1
 
         highlightCurrent()
     }
@@ -115,9 +126,10 @@ export function createPromptRenderer(trackRef: any, scrollController: any) {
 
     return {
         rows,
+        setColumnMap,
         renderAll,
         renderSingle,
         jumpRelative,
-        jumpToIndex
+        jumpToIndex,
     }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue"
+import { ref, watch, nextTick, onMounted } from "vue"
 
 const props = defineProps<{
   modelValue: string | null | undefined
@@ -16,6 +16,12 @@ function onInput() {
   emit("update:modelValue", editor.value.innerText)
 }
 
+onMounted(() => {
+  if (editor.value) {
+    editor.value.innerText = props.modelValue ?? ""
+  }
+})
+
 // Sync external modelValue changes into the DOM without moving the cursor
 watch(
   () => props.modelValue,
@@ -28,7 +34,6 @@ watch(
       }
     })
   },
-  { immediate: true }
 )
 </script>
 

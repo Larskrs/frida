@@ -4,13 +4,12 @@ import { resolveInput } from "../../../components/inputs"
 import { editorStore } from "../editor.store"
 import { useContextMenu } from "../../../components/contextMenu/useContextMenu.ts"
 import Button from "../../../components/basic/Button.vue"
+import {Icon} from "@iconify/vue";
 
-const props = defineProps<{ scheduleId: number }>()
 const emit = defineEmits<{
   (e: "columnEdit", id: number, name: string): void
   (e: "columnCreate", order: number): void
   (e: "columnDelete", id: number): void
-  (e: "rowEdit", rowId: number, key: string, value: any): void
   (e: "cellEdit", rowId: number, columnId: number, cell: any): void
   (e: "rowCreate"): void
   (e: "rowDelete", id: number): void
@@ -24,22 +23,37 @@ const sortedRows = computed(() =>
 )
 
 function getCellValue(row: any, columnId: number) {
-  return row.cells?.[columnId]?.value ?? ""
+  const cell = row.cells?.[columnId] ?? row.cells?.[String(columnId)]
+  console.log(cell)
+  if (!cell) return ""
+  return cell.value ?? ""
 }
 
 function setCellValue(row: any, columnId: number, value: any) {
   if (!row.cells) row.cells = {}
-  if (!row.cells[columnId]) row.cells[columnId] = { type: "Text", value: "" }
-  row.cells[columnId].value = value
-  emit("cellEdit", row.id, columnId, row.cells[columnId])
+
+  const existing = row.cells[columnId] ?? row.cells[String(columnId)]
+  const type = existing?.type ?? "Text"
+
+  const cell = { type, value }
+  row.cells[columnId] = cell
+
+  emit("cellEdit", row.id, columnId, cell)
 }
 
 function openColumnMenu(e: MouseEvent, col: any) {
   e.preventDefault()
-  show(e.clientX, e.clientY, [
+
+  const items = [
     { label: "Create After", icon: "ix:table-add-column-right", action: () => emit("columnCreate", col.order) },
-    { label: "Delete Column", icon: "lucide:delete", danger: true, action: () => emit("columnDelete", col.columnId) }
-  ], e.currentTarget as HTMLElement)
+  ]
+
+  // System columns cannot be deleted or renamed
+  if (!col.system) {
+    items.push({ label: "Delete Column", icon: "lucide:delete", action: () => emit("columnDelete", col.columnId) })
+  }
+
+  show(e.clientX, e.clientY, items, e.currentTarget as HTMLElement)
 }
 
 function openRowMenu(e: MouseEvent, row: any) {
@@ -57,59 +71,48 @@ function openRowMenu(e: MouseEvent, row: any) {
       <table class="text-sm border-collapse table-auto">
 
         <thead class="bg-muted">
-          <tr>
-            <th
-                v-for="col in editorStore.columns"
-                :key="col.columnId ?? col.key"
-                :contenteditable="!!col.columnId"
-                @blur="(e) => col.columnId && emit('columnEdit', col.columnId, (e.target as HTMLElement).innerText.trim())"
-                @contextmenu="(e) => openColumnMenu(e, col)"
-                class="px-4 py-2 text-left font-semibold text-text-muted uppercase tracking-wide select-none"
-            >
-              <template v-if="col.top">
-                <span>{{ col.key.toUpperCase() }}</span>
-              </template>
-              <template v-else>
-                {{ col.name }}
-              </template>
-            </th>
-          </tr>
+        <tr>
+          <th
+              v-for="col in editorStore.columns"
+              :key="col.columnId"
+              :contenteditable="!col.system"
+              @blur="(e) => !col.system && emit('columnEdit', col.columnId, (e.target as HTMLElement).innerText.trim())"
+              @contextmenu="(e) => openColumnMenu(e, col)"
+              class="px-4 py-2 text-left font-semibold text-text-muted uppercase tracking-wide select-none"
+          >
+            <span class="flex items-center gap-1.5">
+              {{ col.name }}
+              <Icon v-if="col.system" icon="material-symbols-light:lock-outline" class="w-4 h-4 shrink-0 -translate-y-0.25" />
+            </span>
+          </th>
+        </tr>
         </thead>
 
         <tbody>
-          <tr
-              v-for="row in sortedRows"
-              :key="row.id"
-              @contextmenu="(e) => openRowMenu(e, row)"
-              :class="[
+        <tr
+            v-for="row in sortedRows"
+            :key="row.id"
+            @contextmenu="(e) => openRowMenu(e, row)"
+            :class="[
                 'transition-colors',
                 row.id === editorStore.activeRowId
                   ? 'bg-active/25 border-l-4 border-active/75'
                   : 'hover:bg-muted'
               ]"
+        >
+          <td
+              v-for="col in editorStore.columns"
+              :key="col.columnId"
+              class="h-px align-middle w-px whitespace-nowrap"
+              @click="(e) => (e.currentTarget as HTMLElement).querySelector<HTMLElement>('input, textarea, select, [contenteditable]')?.focus()"
           >
-            <td
-                v-for="col in editorStore.columns"
-                :key="col.columnId ?? col.key"
-                class="h-px align-middle w-px whitespace-nowrap"
-                @click="(e) => (e.currentTarget as HTMLElement).querySelector<HTMLElement>('input, textarea, select, [contenteditable]')?.focus()"
-            >
-              <template v-if="col.top">
-                <Component
-                    :is="resolveInput(col.type)"
-                    v-model="row[col.key]"
-                    @update:modelValue="(val: any) => emit('rowEdit', row.id, col.key, val)"
-                />
-              </template>
-              <template v-else>
-                <Component
-                    :is="resolveInput(col.type)"
-                    :modelValue="getCellValue(row, col.columnId)"
-                    @update:modelValue="(val: any) => setCellValue(row, col.columnId, val)"
-                />
-              </template>
-            </td>
-          </tr>
+            <Component
+                :is="resolveInput(col.type)"
+                :modelValue="getCellValue(row, col.columnId)"
+                @update:modelValue="(val: any) => setCellValue(row, col.columnId, val)"
+            />
+          </td>
+        </tr>
         </tbody>
 
       </table>

@@ -5,9 +5,18 @@ import com.example.websocket.json
 import data.CellValue
 import data.Column
 import data.Row
+import data.Schedule
+import data.SystemColumns
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.upsert
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -42,14 +51,16 @@ fun fetchRcColumns(config: com.example.config.AppConfig): List<RcColumn> {
     return json.decodeFromString(resp.body())
 }
 
-fun loadRundownAsSchedule(rundownId: Int): Pair<List<Row>, List<Column>> {
+fun importRundownAsSchedule(
+    rundownId: Int,
+    rundownTitle: String,
+): Schedule {
+
     val config = ConfigManager.loadOrCreate()
 
-    // 1. Fetch canonical columns from the API
     val rcColumns = fetchRcColumns(config)
     println("[RC] Fetched ${rcColumns.size} columns: ${rcColumns.map { "${it.columnId}=${it.name}" }}")
 
-    // 2. Fetch rows
     val url = config.rundownUrl +
             "?APIKey=${config.rundownKey}" +
             "&APIToken=${config.rundownToken}" +
@@ -70,80 +81,146 @@ fun loadRundownAsSchedule(rundownId: Int): Pair<List<Row>, List<Column>> {
     val arr = json.parseToJsonElement(resp.body()) as? JsonArray
         ?: error("Rundown API returned non-array")
 
-    if (arr.isEmpty()) return Pair(emptyList(), emptyList())
-
-    // 3. Build a normalised-name → actual row JSON key lookup from the first row
-    val firstRowKeys = arr.first().jsonObject.keys.toList()
+    val firstRowKeys = if (arr.isNotEmpty()) arr.first().jsonObject.keys.toList() else emptyList()
     println("[RC] First row keys: $firstRowKeys")
     val normalisedRowKeyMap = firstRowKeys.associateBy { it.normalise() }
 
-    // 4. Match each RC column to its actual row JSON key
     val matchedColumns = rcColumns
         .sortedBy { it.columnId }
         .mapNotNull { rc ->
             val rowKey = normalisedRowKeyMap[rc.name.normalise()]
             if (rowKey == null) {
-                println("[RC] Column '${rc.name}' (${rc.columnId}) -> no matching row key, skipping")
+                println("[RC] Column '${rc.name}' (${rc.columnId}) -> no match, skipping")
                 null
             } else {
-                println("[RC] Column '${rc.name}' (${rc.columnId}) -> matched row key '$rowKey'")
+                println("[RC] Column '${rc.name}' (${rc.columnId}) -> '$rowKey'")
                 rc to rowKey
             }
         }
         .filter { (_, rowKey) ->
-            // Keep only columns that have at least one non-blank value in this rundown
             arr.any { !it.jsonObject[rowKey]?.jsonPrimitive?.contentOrNull.isNullOrBlank() }
         }
 
-    val columns = matchedColumns.mapIndexed { index, (rc, _) ->
-        Column(id = rc.columnId, name = rc.name, type = "Text", order = index)
-    }
+    println("[RC] Final RC columns: ${matchedColumns.map { (rc, _) -> "${rc.columnId}=${rc.name}" }}")
 
-    println("[RC] Final columns: ${columns.map { "${it.id}=${it.name}" }}")
+    return transaction {
 
-    // 5. columnId → rowKey map for cell building
-    val columnRowKeys: Map<Int, String> = matchedColumns.associate { (rc, rowKey) -> rc.columnId to rowKey }
+        RowsTable.deleteWhere      { RowsTable.scheduleId    eq rundownId }
+        ColumnsTable.deleteWhere   { ColumnsTable.scheduleId eq rundownId }
+        SchedulesTable.deleteWhere { SchedulesTable.id       eq rundownId }
 
-    // 6. Build rows — cells keyed by real ColumnID
-    val rows = arr.mapIndexed { rowIndex, el ->
-        val obj = el.jsonObject
-
-        val id       = obj["RowID"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: rowIndex
-        val page     = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "A$rowIndex"
-        val title    = obj["StorySlug"]?.jsonPrimitive?.contentOrNull ?: ""
-        val duration = (obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L) * 1000L
-
-        val cells = columnRowKeys.entries.fold(LinkedHashMap<Int, CellValue>()) { map, (colId, rowKey) ->
-            val value = obj[rowKey]?.jsonPrimitive?.contentOrNull ?: ""
-            map[colId] = CellValue.Text(value)
-            map
+        SchedulesTable.upsert(SchedulesTable.id) {
+            it[id]           = rundownId
+            it[name]         = rundownTitle
+            it[slug]         = rundownTitle.lowercase().replace(" ", "_")
+            it[programStart] = System.currentTimeMillis()
         }
 
-        Row(
-            id       = id,
-            page     = page,
-            title    = title,
-            duration = duration,
-            cells    = cells,
-            order    = rowIndex,
+        // Insert system columns, collect name -> new DB id
+        val systemColumnDefs = listOf(
+            SystemColumns.PAGE     to "Text",
+            SystemColumns.TITLE    to "Text",
+            SystemColumns.DURATION to "Duration",
+            SystemColumns.SCRIPT   to "Text",
         )
-    }
 
-    return Pair(rows, columns)
+        val systemColumnIds = systemColumnDefs.mapIndexed { index, (colName, colType) ->
+            val newId = ColumnsTable.insert {
+                it[scheduleId] = rundownId
+                it[order]      = index
+                it[name]       = colName
+                it[type]       = colType
+                it[system]     = true
+            } get ColumnsTable.id
+            colName to newId
+        }.toMap()
+
+        // Insert RC columns, remap RC API id -> new DB auto-increment id
+        val rcColumnOffset = systemColumnDefs.size
+        val rcColumnIdMap = mutableMapOf<Int, Int>() // rc.columnId -> newDbId
+
+        matchedColumns.forEachIndexed { index, (rc, _) ->
+            val newDbId = ColumnsTable.insert {
+                it[scheduleId] = rundownId
+                it[order]      = rcColumnOffset + index
+                it[name]       = rc.name
+                it[type]       = "Text"
+                it[system]     = false
+            } get ColumnsTable.id
+
+            rcColumnIdMap[rc.columnId] = newDbId
+            println("[RC] Mapped RC col ${rc.columnId}='${rc.name}' -> DB id $newDbId")
+        }
+
+        // Re-read all columns with final correct IDs
+        val allColumns = ColumnsTable
+            .select { ColumnsTable.scheduleId eq rundownId }
+            .orderBy(ColumnsTable.order to SortOrder.ASC)
+            .map {
+                Column(
+                    id     = it[ColumnsTable.id],
+                    name   = it[ColumnsTable.name],
+                    type   = it[ColumnsTable.type],
+                    order  = it[ColumnsTable.order],
+                    system = it[ColumnsTable.system],
+                )
+            }
+
+        val pageColId     = systemColumnIds[SystemColumns.PAGE]
+        val titleColId    = systemColumnIds[SystemColumns.TITLE]
+        val durationColId = systemColumnIds[SystemColumns.DURATION]
+
+        val rows = arr.mapIndexed { rowIndex, el ->
+            val obj = el.jsonObject
+
+            val pageValue     = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "A$rowIndex"
+            val titleValue    = obj["StorySlug"]?.jsonPrimitive?.contentOrNull ?: ""
+            val durationValue = (obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L) * 1000L
+
+            val cells = LinkedHashMap<Int, CellValue>()
+
+            pageColId?.let     { cells[it] = CellValue.Text(pageValue) }
+            titleColId?.let    { cells[it] = CellValue.Text(titleValue) }
+            durationColId?.let { cells[it] = CellValue.Number(durationValue.toDouble()) }
+
+            // Use remapped DB ids, not the original RC column ids
+            matchedColumns.forEach { (rc, rowKey) ->
+                val dbColId = rcColumnIdMap[rc.columnId] ?: return@forEach
+                val value = obj[rowKey]?.jsonPrimitive?.contentOrNull ?: ""
+                cells[dbColId] = CellValue.Text(value)
+            }
+
+            val rowId = obj["RowID"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: rowIndex
+            println("[RC] Row $rowIndex id=$rowId: ${cells.size} cells, ids=${cells.keys}")
+
+            RowsTable.insert {
+                it[id]              = rowId
+                it[scheduleId]      = rundownId
+                it[order]           = rowIndex
+                it[RowsTable.cells] = cells
+            }
+
+            Row(id = rowId, order = rowIndex, cells = cells)
+        }
+
+        val schedule = Schedule(
+            id           = rundownId,
+            name         = rundownTitle,
+            programStart = System.currentTimeMillis(),
+            rows         = rows,
+            columns      = allColumns,
+        )
+
+        ScheduleStore.set(rundownId, schedule)
+        schedule
+    }
 }
 
 private fun parseTimeToMillis(text: String): Long {
     val parts = text.split(":").mapNotNull { it.toLongOrNull() }
-
-    if (parts.size != 3) {
-        println("[CSV] Invalid time format: $text")
-        return 0
-    }
-
+    if (parts.size != 3) { println("[CSV] Invalid time format: $text"); return 0 }
     val (h, m, s) = parts
     val ms = (h * 3600 + m * 60 + s) * 1000
-
     println("[CSV] Time parsed [$text] -> $ms ms")
-
     return ms
 }

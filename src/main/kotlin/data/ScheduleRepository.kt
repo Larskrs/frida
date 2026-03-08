@@ -41,21 +41,18 @@ object ScheduleRepository {
             schedule.id
         }
 
+        val scheduleEntityId = EntityID(scheduleId, SchedulesTable)
+
         /* Remove old rows */
         RowsTable.deleteWhere { RowsTable.scheduleId eq scheduleId }
 
-        val scheduleEntityId = EntityID(scheduleId, SchedulesTable)
         /* Insert new rows */
         schedule.rows.forEachIndexed { index, row ->
             RowsTable.insert {
-                it[id] = row.id
-                it[order] = index
-                it[page] = row.page
+                it[id]         = row.id
+                it[order]      = index
                 it[RowsTable.scheduleId] = scheduleEntityId
-                it[title] = row.title
-                it[duration] = row.duration
-                it[script] = row.script
-                it[cells] = row.cells
+                it[cells]      = row.cells
             }
         }
 
@@ -63,10 +60,11 @@ object ScheduleRepository {
 
         schedule.columns.forEachIndexed { index, column ->
             ColumnsTable.insert {
-                it[id] = column.id
-                it[name] = column.name
-                it[order] = index
-                it[type] = column.type
+                it[id]         = column.id
+                it[name]       = column.name
+                it[order]      = index
+                it[type]       = column.type
+                it[system]     = column.system
                 it[ColumnsTable.scheduleId] = scheduleEntityId
             }
         }
@@ -105,31 +103,29 @@ object ScheduleRepository {
             .map { toColumn(it) }
 
         return Schedule(
-            id = scheduleId,
-            name = row[SchedulesTable.name],
+            id           = scheduleId,
+            name         = row[SchedulesTable.name],
             programStart = row[SchedulesTable.programStart],
-            rows = rows,
-            columns = columns
+            rows         = rows,
+            columns      = columns
         )
     }
 
     private fun toRow(row: ResultRow): Row {
         return Row(
-            id = row[RowsTable.id],
-            page = row[RowsTable.page],
-            title = row[RowsTable.title],
-            duration = row[RowsTable.duration],
-            script = row[RowsTable.script],
-            cells = row[RowsTable.cells],
+            id    = row[RowsTable.id],
             order = row[RowsTable.order],
+            cells = row[RowsTable.cells],
         )
     }
+
     private fun toColumn(col: ResultRow): data.Column {
         return data.Column(
-            id    = col[ColumnsTable.id],
-            name  = col[ColumnsTable.name],
-            type  = col[ColumnsTable.type],
-            order = col[ColumnsTable.order],
+            id     = col[ColumnsTable.id],
+            name   = col[ColumnsTable.name],
+            type   = col[ColumnsTable.type],
+            order  = col[ColumnsTable.order],
+            system = col[ColumnsTable.system],
         )
     }
 }

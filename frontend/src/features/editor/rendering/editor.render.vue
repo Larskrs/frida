@@ -12,14 +12,14 @@ import EditorTable from "./editor.table.vue"
 const importId = ref("")
 const modals = useModal()
 
+const route = useRoute()
+const scheduleId = computed(() => Number(route.query.id || 1))
+
 const socket = createEditorSocket()
 useEditorSocket(socket)
 
 onMounted(() => socket.connect(scheduleId.value))
 onBeforeUnmount(() => socket.disconnect())
-
-const route = useRoute()
-const scheduleId = computed(() => Number(route.query.id || 1))
 
 watch(scheduleId, async (newId) => {
   await socket.disconnect()
@@ -30,6 +30,7 @@ function sendRowEdit(rowId: number, key: string, value: any) {
   socket.send({ type: "com.example.websocket.ScheduleEvent.RowEdited", scheduleId: editorStore.schedule?.id, rowId, key, value })
 }
 function sendCellEdit(rowId: number, columnId: number, cell: any) {
+  console.log("called cell edit")
   socket.send({ type: "com.example.websocket.ScheduleEvent.RowEdited", scheduleId: editorStore.schedule?.id, rowId, columnId, cell })
 }
 function sendColumnEdit(id: number, name: string) {
@@ -91,35 +92,30 @@ async function runImport() {
         @import-click="modals.open('import-rc')"
     />
 
-    <main v-if="!editorStore.schedule" class="col-start-2 p-4 flex items-center justify-center text-text-muted">
-      <div class="spinner" />
-      <span>Loading schedule…</span>
-    </main>
-
 <Transition name="fade" mode="out-in">
-  <main v-if="!editorStore.schedule" key="loading" class="col-start-2 p-4 flex items-center justify-center text-text-muted">
-    <div class="spinner" />
-    <span>Loading schedule…</span>
-  </main>
+      <main v-if="!editorStore.schedule" key="loading" class="col-start-2 p-4 flex items-center justify-center text-text-muted">
+        <div class="spinner" />
+        <span>Loading schedule…</span>
+      </main>
 
-  <main v-else :key="scheduleId" class="h-screen overflow-y-auto col-start-2 p-4">
-    <nav class="mb-4">
-      <h1 class="text-xl font-bold text-primary">{{ editorStore.schedule.name }}</h1>
-    </nav>
+      <main v-else :key="scheduleId" class="h-screen overflow-y-auto col-start-2 p-4">
+        <nav class="mb-4">
+          <h1 class="text-xl font-bold text-primary">{{ editorStore.schedule.name }}</h1>
+        </nav>
 
-    <EditorTable
-        :schedule-id="scheduleId"
-        @row-edit="sendRowEdit"
-        @cell-edit="sendCellEdit"
-        @column-edit="sendColumnEdit"
-        @column-create="sendColumnCreate"
-        @column-delete="sendColumnDelete"
-        @row-create="sendRowCreate"
-        @row-delete="sendRowDelete"
-        @set-active-row="sendSetActiveRow"
-    />
-  </main>
-</Transition>
+        <EditorTable
+            :schedule-id="scheduleId"
+            @row-edit="sendRowEdit"
+            @cell-edit="sendCellEdit"
+            @column-edit="sendColumnEdit"
+            @column-create="sendColumnCreate"
+            @column-delete="sendColumnDelete"
+            @row-create="sendRowCreate"
+            @row-delete="sendRowDelete"
+            @set-active-row="sendSetActiveRow"
+        />
+      </main>
+    </Transition>
 
   </div>
 </template>

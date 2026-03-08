@@ -24,6 +24,15 @@ function jumpRelative(_delta: number) {
   renderer.jumpRelative(_delta)
 }
 
+function buildColumnMap(columns: any[]) {
+  const find = (name: string) => columns.find((c: any) => c.system && c.name === name)?.id ?? null
+  return {
+    pageColId:   find("page"),
+    titleColId:  find("title"),
+    scriptColId: find("script"),
+  }
+}
+
 onMounted(() => {
 
   ws.on("message", (event) => {
@@ -34,31 +43,24 @@ onMounted(() => {
     switch (type) {
       case "Load":
         renderer.rows.clear()
-        event.schedule?.rows?.forEach((r: { id: number }) => {
+        event.schedule?.rows?.forEach((r: any) => {
           renderer.rows.set(r.id, r)
         })
+        renderer.setColumnMap(buildColumnMap(event.schedule?.columns ?? []))
         renderer.renderAll()
         break
 
-      case "RowEdited":
+      case "RowEdited": {
         if (!event.rowId) return
         const row = renderer.rows.get(event.rowId)
         if (!row) return
 
-        if (!event.cell) {
-          row[event.key!] = event.value
-        } else {
-          row.cells ??= {}
-          row.cells[event.key!] = event.cell
-        }
+        row.cells ??= {}
+        row.cells[event.columnId!] = event.cell
 
         renderer.renderSingle(event.rowId)
         break
-
-      case "RowCreate":
-        renderer.rows.set(event.row!.id, event.row)
-        renderer.renderAll()
-        break
+      }
 
       case "RowDelete":
         renderer.rows.delete(event.rowId!)
