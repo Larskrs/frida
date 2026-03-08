@@ -378,6 +378,7 @@ fun insertColumnAtOrder(
     name: String,
     type: String,
     system: Boolean = false,
+    hidden: Boolean = false,
 ): Schedule {
 
     return transaction {
@@ -401,6 +402,7 @@ fun insertColumnAtOrder(
             it[ColumnsTable.name]   = name
             it[ColumnsTable.type]   = type
             it[ColumnsTable.system] = system
+            it[ColumnsTable.hidden] = hidden
         }
 
         val columns = ColumnsTable
@@ -413,6 +415,7 @@ fun insertColumnAtOrder(
                     order  = it[ColumnsTable.order],
                     type   = it[ColumnsTable.type],
                     system = it[ColumnsTable.system],
+                    hidden = it[ColumnsTable.hidden],
                 )
             }
 

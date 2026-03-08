@@ -31,6 +31,7 @@ data class Column(
     val type: String,
     val order: Int,
     val system: Boolean = false,
+    val hidden: Boolean
 )
 
 // ---- Cell helpers ----

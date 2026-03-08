@@ -143,6 +143,10 @@ export class WebSocketManager<TMessage = unknown> {
         this.listeners[event].delete(callback)
     }
 
+    status() {
+        return this.socket?.readyState
+    }
+
     /* -------------------------------------------------- */
     /* Private                                            */
     /* -------------------------------------------------- */

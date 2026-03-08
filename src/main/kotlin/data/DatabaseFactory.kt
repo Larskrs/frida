@@ -61,6 +61,7 @@ object DatabaseFactory {
         transaction(database) {
             SchemaUtils.create(SchedulesTable, RowsTable, ColumnsTable)
             SchemaUtils.addMissingColumnsStatements(SchedulesTable, RowsTable, ColumnsTable)
+            SchemaUtils.createMissingTablesAndColumns(SchedulesTable, RowsTable, ColumnsTable)
         }
     }
 }
@@ -90,6 +91,7 @@ object ColumnsTable : Table("columns") {
     val order      = integer("order")
     val type       = varchar("type", 255)
     val system     = bool("system").default(false)
+    val hidden     = bool("hidden").default(false)
     val scheduleId = reference("schedule_id", SchedulesTable)
 
     override val primaryKey = PrimaryKey(id, scheduleId)

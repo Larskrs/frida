@@ -65,6 +65,7 @@ object ScheduleRepository {
                 it[order]      = index
                 it[type]       = column.type
                 it[system]     = column.system
+                it[hidden]     = column.hidden
                 it[ColumnsTable.scheduleId] = scheduleEntityId
             }
         }
@@ -120,12 +121,14 @@ object ScheduleRepository {
     }
 
     private fun toColumn(col: ResultRow): data.Column {
+        println(col[ColumnsTable.hidden])
         return data.Column(
             id     = col[ColumnsTable.id],
             name   = col[ColumnsTable.name],
             type   = col[ColumnsTable.type],
             order  = col[ColumnsTable.order],
             system = col[ColumnsTable.system],
+            hidden = col[ColumnsTable.hidden],
         )
     }
 }

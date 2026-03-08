@@ -2,6 +2,7 @@ export function buildColumns(schedule: any) {
     return schedule.columns
         .slice()
         .sort((a: any, b: any) => a.order - b.order)
+        .filter((col: any) => !col.hidden)
         .map((col: any) => ({
             columnId: col.id,
             name: col.name,

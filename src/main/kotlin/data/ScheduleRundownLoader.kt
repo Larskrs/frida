@@ -31,6 +31,8 @@ data class RcColumn(
 
 fun String.normalise() = this.lowercase().replace("\\s+".toRegex(), "")
 
+private val httpClient = HttpClient.newHttpClient()
+
 fun fetchRcColumns(config: com.example.config.AppConfig): List<RcColumn> {
     val url = config.rundownUrl +
             "?APIKey=${config.rundownKey}" +
@@ -43,12 +45,50 @@ fun fetchRcColumns(config: com.example.config.AppConfig): List<RcColumn> {
         .timeout(Duration.ofSeconds(10))
         .build()
 
-    val resp = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString())
+    val resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString())
 
     if (resp.statusCode() !in 200..299)
         error("getColumns failed: ${resp.statusCode()}")
 
     return json.decodeFromString(resp.body())
+}
+
+/**
+ * Fetches the latest script for a given RC row ID.
+ * Returns the plain script text, or null if not found / failed.
+ * Uses RemoveCurlyBrackets + RemoveSquareBrackets + RemoveCarets to get clean text.
+ */
+fun fetchRcScript(config: com.example.config.AppConfig, rowId: Int): String? {
+    return try {
+        val url = config.rundownUrl +
+                "?APIKey=${config.rundownKey}" +
+                "&APIToken=${config.rundownToken}" +
+                "&Action=getScript" +
+                "&RowID=$rowId" +
+                "&RemoveCurlyBrackets=true" +
+                "&RemoveSquareBrackets=true" +
+                "&RemoveCarets=true"
+
+        val req = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .timeout(Duration.ofSeconds(10))
+            .build()
+
+        val resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString())
+
+        if (resp.statusCode() !in 200..299) {
+            println("[RC] getScript failed for row $rowId: ${resp.statusCode()}")
+            return null
+        }
+
+        val arr = json.parseToJsonElement(resp.body()) as? JsonArray ?: return null
+        val first = arr.firstOrNull()?.jsonObject ?: return null
+        first["Script"]?.jsonPrimitive?.contentOrNull
+    } catch (e: Exception) {
+        println("[RC] getScript exception for row $rowId: ${e.message}")
+        null
+    }
 }
 
 fun importRundownAsSchedule(
@@ -58,9 +98,11 @@ fun importRundownAsSchedule(
 
     val config = ConfigManager.loadOrCreate()
 
+    // ---- 1. Fetch RC columns ----
     val rcColumns = fetchRcColumns(config)
     println("[RC] Fetched ${rcColumns.size} columns: ${rcColumns.map { "${it.columnId}=${it.name}" }}")
 
+    // ---- 2. Fetch rows ----
     val url = config.rundownUrl +
             "?APIKey=${config.rundownKey}" +
             "&APIToken=${config.rundownToken}" +
@@ -73,7 +115,7 @@ fun importRundownAsSchedule(
         .timeout(Duration.ofSeconds(10))
         .build()
 
-    val resp = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString())
+    val resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString())
 
     if (resp.statusCode() !in 200..299)
         error("Rundown API failed: ${resp.statusCode()}")
@@ -81,6 +123,7 @@ fun importRundownAsSchedule(
     val arr = json.parseToJsonElement(resp.body()) as? JsonArray
         ?: error("Rundown API returned non-array")
 
+    // ---- 3. Match RC columns to row JSON keys ----
     val firstRowKeys = if (arr.isNotEmpty()) arr.first().jsonObject.keys.toList() else emptyList()
     println("[RC] First row keys: $firstRowKeys")
     val normalisedRowKeyMap = firstRowKeys.associateBy { it.normalise() }
@@ -103,6 +146,16 @@ fun importRundownAsSchedule(
 
     println("[RC] Final RC columns: ${matchedColumns.map { (rc, _) -> "${rc.columnId}=${rc.name}" }}")
 
+    // ---- 4. Fetch scripts for all rows upfront (before transaction) ----
+    val scriptsByRowId = arr.associate { el ->
+        val obj   = el.jsonObject
+        val rowId = obj["RowID"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: -1
+        val script = if (rowId > 0) fetchRcScript(config, rowId) else null
+        println("[RC] Script for row $rowId: ${if (script != null) "${script.length} chars" else "none"}")
+        rowId to (script ?: "")
+    }
+
+    // ---- 5. Persist everything in a single transaction ----
     return transaction {
 
         RowsTable.deleteWhere      { RowsTable.scheduleId    eq rundownId }
@@ -116,7 +169,7 @@ fun importRundownAsSchedule(
             it[programStart] = System.currentTimeMillis()
         }
 
-        // Insert system columns, collect name -> new DB id
+        // Insert system columns
         val systemColumnDefs = listOf(
             SystemColumns.PAGE     to "Text",
             SystemColumns.TITLE    to "Text",
@@ -131,13 +184,14 @@ fun importRundownAsSchedule(
                 it[name]       = colName
                 it[type]       = colType
                 it[system]     = true
+                it[hidden]     = colName == "script"
             } get ColumnsTable.id
             colName to newId
         }.toMap()
 
         // Insert RC columns, remap RC API id -> new DB auto-increment id
         val rcColumnOffset = systemColumnDefs.size
-        val rcColumnIdMap = mutableMapOf<Int, Int>() // rc.columnId -> newDbId
+        val rcColumnIdMap  = mutableMapOf<Int, Int>()
 
         matchedColumns.forEachIndexed { index, (rc, _) ->
             val newDbId = ColumnsTable.insert {
@@ -163,34 +217,37 @@ fun importRundownAsSchedule(
                     type   = it[ColumnsTable.type],
                     order  = it[ColumnsTable.order],
                     system = it[ColumnsTable.system],
+                    hidden = it[ColumnsTable.hidden],
                 )
             }
 
         val pageColId     = systemColumnIds[SystemColumns.PAGE]
         val titleColId    = systemColumnIds[SystemColumns.TITLE]
         val durationColId = systemColumnIds[SystemColumns.DURATION]
+        val scriptColId   = systemColumnIds[SystemColumns.SCRIPT]
 
         val rows = arr.mapIndexed { rowIndex, el ->
             val obj = el.jsonObject
 
+            val rowId         = obj["RowID"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: rowIndex
             val pageValue     = obj["PageNumber"]?.jsonPrimitive?.contentOrNull ?: "A$rowIndex"
             val titleValue    = obj["StorySlug"]?.jsonPrimitive?.contentOrNull ?: ""
             val durationValue = (obj["EstimatedDuration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L) * 1000L
+            val scriptValue   = scriptsByRowId[rowId] ?: ""
 
             val cells = LinkedHashMap<Int, CellValue>()
 
             pageColId?.let     { cells[it] = CellValue.Text(pageValue) }
             titleColId?.let    { cells[it] = CellValue.Text(titleValue) }
             durationColId?.let { cells[it] = CellValue.Number(durationValue.toDouble()) }
+            scriptColId?.let   { cells[it] = CellValue.Text(scriptValue) }
 
-            // Use remapped DB ids, not the original RC column ids
             matchedColumns.forEach { (rc, rowKey) ->
                 val dbColId = rcColumnIdMap[rc.columnId] ?: return@forEach
                 val value = obj[rowKey]?.jsonPrimitive?.contentOrNull ?: ""
                 cells[dbColId] = CellValue.Text(value)
             }
 
-            val rowId = obj["RowID"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: rowIndex
             println("[RC] Row $rowIndex id=$rowId: ${cells.size} cells, ids=${cells.keys}")
 
             RowsTable.insert {

@@ -18,8 +18,8 @@
     </div>
 
     <template v-else>
-      <ul class="flex flex-col w-full items-start gap-1 p-4">
-        <span class="text-xs text-text/75">Kjøreplaner</span>
+      <ul class="flex flex-col w-full items-start gap-1 p-2">
+        <span class="text-xs text-text/75 ml-1">Kjøreplaner</span>
           <RouterLink
              v-for="schedule in schedules"
              :key="schedule.id"

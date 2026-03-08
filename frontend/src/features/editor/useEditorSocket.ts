@@ -12,6 +12,7 @@ export function useEditorSocket(socket: WebSocketManager<EditorEvent>) {
         switch (type) {
 
             case "Load":
+                console.log(event.schedule.columns[3])
                 editorStore.schedule = event.schedule
                 editorStore.rows = [...event.schedule.rows]
                 editorStore.columns = buildColumns(event.schedule)

@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   },
   {
     type: "button",
-    label: "Import Rundown",
+    label: "Hent fra RundownCreator",
     icon: "material-symbols-light:cloud-download-outline-rounded",
     action: "importClick"
   }
@@ -59,8 +59,8 @@ function resolveLink(to: NavLink["to"]): string {
         class="w-full flex items-center mt-4 mb-2 gap-2"
     >
       <div v-if="!editorUI.sidebarCollapsed" class="flex items-center gap-2">
-        <span class="font-bold text-lg tracking-tight text-primary">FRIDA</span>
-        <span class="text-xs text-active font-medium bg-active/25 px-1.5 py-0.5 rounded">Studio</span>
+        <span class="font-medium text-lg tracking-tight text-text/80">Kari</span>
+        <span class="text-xs text-active font-bold bg-active/15 px-1.5 py-0.5 rounded">Kjøreplan</span>
       </div>
 
       <!-- Toggle button -->
@@ -79,7 +79,7 @@ function resolveLink(to: NavLink["to"]): string {
     </div>
 
     <!-- Nav items -->
-    <div class="w-full flex flex-col items-start px-2 mt-1 justify-start gap-0.5">
+    <div class="w-full flex flex-col items-start px-2 mt-4 mb-4 justify-start gap-0.5">
       <template v-for="item in navItems" :key="item.label">
 
         <RouterLink

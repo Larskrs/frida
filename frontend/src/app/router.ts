@@ -6,7 +6,7 @@ import EditorView from "../features/editor/rendering/editor.render.vue";
 export const router = createRouter({
     history: createWebHistory(),
     routes: [
-        { path: "/", redirect: "/prompt" },
+        { path: "/", redirect: "/editor" },
         { path: "/prompt", component: PromptView },
         { path: "/editor", component: EditorView },
     ],

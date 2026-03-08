@@ -24,7 +24,6 @@ const sortedRows = computed(() =>
 
 function getCellValue(row: any, columnId: number) {
   const cell = row.cells?.[columnId] ?? row.cells?.[String(columnId)]
-  console.log(cell)
   if (!cell) return ""
   return cell.value ?? ""
 }
@@ -94,10 +93,10 @@ function openRowMenu(e: MouseEvent, row: any) {
             :key="row.id"
             @contextmenu="(e) => openRowMenu(e, row)"
             :class="[
-                'transition-colors',
+                'transition-colors duration-25',
                 row.id === editorStore.activeRowId
-                  ? 'bg-active/25 border-l-4 border-active/75'
-                  : 'hover:bg-muted'
+                  ? 'bg-active/25'
+                  : 'hover:bg-bg-hover'
               ]"
         >
           <td

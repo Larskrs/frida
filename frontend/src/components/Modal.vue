@@ -8,7 +8,7 @@
     >
       <div
           v-if="isOpen"
-          class="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60"
+          class="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/33 dark:bg-black/50"
           :class="{ 'backdrop-blur-sm': backdrop === 'blur' }"
           @click.self="closeOnBackdrop && close()"
           role="dialog"
@@ -60,7 +60,7 @@
             <!-- Custom footer slot -->
             <div
                 v-if="$slots.footer"
-                class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex-wrap"
+                class="flex items-center justify-end gap-3 px-6 py-4 flex-shrink-0 flex-wrap"
             >
               <slot name="footer" :close="close" />
             </div>
@@ -68,7 +68,7 @@
             <!-- Default footer -->
             <div
                 v-else-if="confirmLabel || cancelLabel || action"
-                class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex-wrap"
+                class="flex items-center justify-end gap-3 px-6 py-4 bg-bg flex-shrink-0 flex-wrap"
             >
               <!-- Error message -->
               <Transition
